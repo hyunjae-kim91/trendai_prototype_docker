@@ -1,4 +1,4 @@
-.color-analysis {
+.detail-analysis {
   padding: 20px;
 }
 
@@ -205,7 +205,7 @@
   margin-top: 20px;
 }
 
-.color-table-container {
+.detail-table-container {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -254,7 +254,7 @@
   overflow-x: auto;
 }
 
-.color-table {
+.detail-table {
   width: 100%;
   border-collapse: collapse;
   background: rgba(255, 255, 255, 0.05);
@@ -262,7 +262,7 @@
   overflow: hidden;
 }
 
-.color-table th {
+.detail-table th {
   background: rgba(255, 255, 255, 0.1);
   color: white;
   font-weight: 600;
@@ -272,7 +272,7 @@
   font-size: 0.9rem;
 }
 
-.color-table td {
+.detail-table td {
   padding: 10px 8px;
   text-align: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -280,7 +280,7 @@
   font-size: 0.85rem;
 }
 
-.color-table tr:hover {
+.detail-table tr:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -391,12 +391,12 @@
     gap: 15px;
   }
 
-  .color-table-container {
+  .detail-table-container {
     padding: 15px;
   }
 
-  .color-table th,
-  .color-table td {
+  .detail-table th,
+  .detail-table td {
     padding: 8px 4px;
     font-size: 0.8rem;
   }

@@ -9,11 +9,31 @@ function PatternAnalysis() {
     followers: 0,
   });
 
+  const [appliedFilters, setAppliedFilters] = useState({
+    startDate: "",
+    endDate: "",
+    followers: 0,
+  });
+
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({
       ...prev,
       [filterType]: value,
     }));
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedFilters({ ...filters });
+  };
+
+  const handleResetFilters = () => {
+    const resetFilters = {
+      startDate: "",
+      endDate: "",
+      followers: 0,
+    };
+    setFilters(resetFilters);
+    setAppliedFilters(resetFilters);
   };
 
   const formatDate = (dateString) => {
@@ -109,14 +129,23 @@ function PatternAnalysis() {
           </div>
         </div>
 
+        <div className="filter-buttons">
+          <button className="apply-button" onClick={handleApplyFilters}>
+            필터 적용
+          </button>
+          <button className="reset-button" onClick={handleResetFilters}>
+            초기화
+          </button>
+        </div>
+
         <div className="filter-info">
           <span className="filter-text">
-            {filters.startDate && filters.endDate
-              ? `${formatDate(filters.startDate)} ~ ${formatDate(
-                  filters.endDate
+            {appliedFilters.startDate && appliedFilters.endDate
+              ? `${formatDate(appliedFilters.startDate)} ~ ${formatDate(
+                  appliedFilters.endDate
                 )}`
               : "날짜를 선택해주세요"}{" "}
-            • {formatFollowers(filters.followers)} 팔로워
+            • {formatFollowers(appliedFilters.followers)} 팔로워
           </span>
         </div>
       </div>

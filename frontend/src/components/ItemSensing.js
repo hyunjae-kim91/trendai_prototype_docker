@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Navigation from "./Navigation";
 import ColorAnalysis from "./ColorAnalysis";
 import PatternAnalysis from "./PatternAnalysis";
+import DetailAnalysis from "./DetailAnalysis";
 import "./ItemSensing.css";
 
 function ItemSensing() {
@@ -21,12 +22,7 @@ function ItemSensing() {
       case "pattern":
         return <PatternAnalysis />;
       case "detail":
-        return (
-          <div className="tab-content">
-            <h2>Detail Analysis</h2>
-            <p>세부사항 트렌드 분석 기능이 여기에 구현됩니다.</p>
-          </div>
-        );
+        return <DetailAnalysis />;
       case "type":
         return (
           <div className="tab-content">

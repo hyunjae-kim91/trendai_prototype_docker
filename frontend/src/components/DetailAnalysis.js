@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { colorData } from "../data/colorData";
-import "./ColorAnalysis.css";
+import { detailData } from "../data/detailData";
+import "./DetailAnalysis.css";
 
-function ColorAnalysis() {
+function DetailAnalysis() {
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
@@ -48,11 +48,12 @@ function ColorAnalysis() {
     if (value < 1000000) return `${(value / 1000).toFixed(0)}K`;
     return `${(value / 1000000).toFixed(1)}M`;
   };
+
   const renderTable = (data, title, type) => (
-    <div className="color-table-container">
+    <div className="detail-table-container">
       <h3 className={`table-title ${type}`}>{title}</h3>
       <div className="table-wrapper">
-        <table className="color-table">
+        <table className="detail-table">
           <thead>
             <tr>
               <th>No</th>
@@ -77,10 +78,10 @@ function ColorAnalysis() {
   );
 
   return (
-    <div className="color-analysis">
+    <div className="detail-analysis">
       <div className="analysis-header">
-        <h2>Color Analysis</h2>
-        <p>색상 트렌드 분석 결과</p>
+        <h2>Detail Analysis</h2>
+        <p>세부사항 트렌드 분석 결과</p>
       </div>
 
       <div className="filter-section">
@@ -150,12 +151,12 @@ function ColorAnalysis() {
       </div>
 
       <div className="tables-container">
-        {renderTable(colorData.rising, "상승", "rising")}
-        {renderTable(colorData.stable, "유지", "stable")}
-        {renderTable(colorData.falling, "하락", "falling")}
+        {renderTable(detailData.rising, "상승", "rising")}
+        {renderTable(detailData.stable, "유지", "stable")}
+        {renderTable(detailData.falling, "하락", "falling")}
       </div>
     </div>
   );
 }
 
-export default ColorAnalysis;
+export default DetailAnalysis;
