@@ -1,0 +1,116 @@
+.main-selection {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.selection-container {
+  text-align: center;
+  max-width: 800px;
+  width: 100%;
+}
+
+.main-title {
+  font-size: 3rem;
+  color: white;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  font-weight: bold;
+}
+
+.main-subtitle {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 30px;
+}
+
+.selection-options {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.selection-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 20px 25px;
+  min-width: 220px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  color: white;
+}
+
+.selection-card:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.selection-card h2 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.selection-card p {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.item-card {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 175, 80, 0.2),
+    rgba(139, 195, 74, 0.2)
+  );
+}
+
+.item-card:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 175, 80, 0.3),
+    rgba(139, 195, 74, 0.3)
+  );
+}
+
+.mood-card {
+  background: linear-gradient(
+    135deg,
+    rgba(156, 39, 176, 0.2),
+    rgba(233, 30, 99, 0.2)
+  );
+}
+
+.mood-card:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(156, 39, 176, 0.3),
+    rgba(233, 30, 99, 0.3)
+  );
+}
+
+@media (max-width: 768px) {
+  .selection-options {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .selection-card {
+    min-width: 200px;
+    padding: 20px;
+  }
+
+  .main-title {
+    font-size: 2.5rem;
+  }
+}
