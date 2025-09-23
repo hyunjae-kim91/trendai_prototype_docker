@@ -58,6 +58,35 @@
   align-items: center;
 }
 
+.mood-filter-toggle {
+  background: linear-gradient(
+    135deg,
+    rgba(156, 39, 176, 0.8) 0%,
+    rgba(233, 30, 99, 0.8) 100%
+  );
+  border: 1px solid rgba(156, 39, 176, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.2);
+}
+
+.mood-filter-toggle:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(156, 39, 176, 0.9) 0%,
+    rgba(233, 30, 99, 0.9) 100%
+  );
+  border-color: rgba(156, 39, 176, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(156, 39, 176, 0.3);
+}
+
 .filter-text {
   background: rgba(255, 255, 255, 0.2);
   padding: 5px 12px;
@@ -149,6 +178,147 @@
 
 .keyword-item.selected .keyword-count {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* 무드 필터 섹션 */
+.mood-filter-section {
+  background: rgba(156, 39, 176, 0.1);
+  border: 1px solid rgba(156, 39, 176, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  backdrop-filter: blur(10px);
+}
+
+.mood-filter-controls {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.filter-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.filter-select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  font-size: 0.9rem;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.filter-select:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.filter-select option {
+  background: #333;
+  color: white;
+}
+
+.reset-filter-button {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 152, 0, 0.8) 0%,
+    rgba(255, 193, 7, 0.8) 100%
+  );
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);
+  width: 100%;
+  margin-top: 24px;
+}
+
+.reset-filter-button:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 152, 0, 0.9) 0%,
+    rgba(255, 193, 7, 0.9) 100%
+  );
+  border-color: rgba(255, 152, 0, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+}
+
+.reset-filter-button:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.mood-keywords-preview {
+  margin-top: 20px;
+}
+
+.mood-keywords-preview h5 {
+  margin: 0 0 15px 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+}
+
+.mood-keywords-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.mood-keyword-tag {
+  background: linear-gradient(
+    135deg,
+    rgba(156, 39, 176, 0.8),
+    rgba(233, 30, 99, 0.8)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.mood-keyword-tag:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(156, 39, 176, 0.9),
+    rgba(233, 30, 99, 0.9)
+  );
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* 갤러리 섹션 */
