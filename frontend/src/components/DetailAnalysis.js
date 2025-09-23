@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { detailData } from "../data/detailData";
+import { clothingCategories } from "../data/clothingCategories";
 import "./DetailAnalysis.css";
 
 function DetailAnalysis() {
@@ -7,19 +8,32 @@ function DetailAnalysis() {
     startDate: "",
     endDate: "",
     followers: 0,
+    mainCategory: "",
+    subCategory: "",
   });
 
   const [appliedFilters, setAppliedFilters] = useState({
     startDate: "",
     endDate: "",
     followers: 0,
+    mainCategory: "",
+    subCategory: "",
   });
 
   const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }));
+    setFilters((prev) => {
+      const newFilters = {
+        ...prev,
+        [filterType]: value,
+      };
+
+      // 대분류가 변경되면 소분류 초기화
+      if (filterType === "mainCategory") {
+        newFilters.subCategory = "";
+      }
+
+      return newFilters;
+    });
   };
 
   const handleApplyFilters = () => {
@@ -31,6 +45,8 @@ function DetailAnalysis() {
       startDate: "",
       endDate: "",
       followers: 0,
+      mainCategory: "",
+      subCategory: "",
     };
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
@@ -85,6 +101,40 @@ function DetailAnalysis() {
       </div>
 
       <div className="filter-section">
+        <div className="filter-group">
+          <label className="filter-label">대분류</label>
+          <select
+            className="filter-select"
+            value={filters.mainCategory}
+            onChange={(e) => handleFilterChange("mainCategory", e.target.value)}
+          >
+            <option value="">전체</option>
+            {Object.keys(clothingCategories).map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label">소분류</label>
+          <select
+            className="filter-select"
+            value={filters.subCategory}
+            onChange={(e) => handleFilterChange("subCategory", e.target.value)}
+            disabled={!filters.mainCategory}
+          >
+            <option value="">전체</option>
+            {filters.mainCategory &&
+              clothingCategories[filters.mainCategory]?.map((subCategory) => (
+                <option key={subCategory} value={subCategory}>
+                  {subCategory}
+                </option>
+              ))}
+          </select>
+        </div>
+
         <div className="filter-group">
           <label className="filter-label">시작 날짜</label>
           <input
@@ -146,6 +196,14 @@ function DetailAnalysis() {
                 )}`
               : "날짜를 선택해주세요"}{" "}
             • {formatFollowers(appliedFilters.followers)} 팔로워
+            {appliedFilters.mainCategory && (
+              <>
+                {" "}
+                • {appliedFilters.mainCategory}
+                {appliedFilters.subCategory &&
+                  ` - ${appliedFilters.subCategory}`}
+              </>
+            )}
           </span>
         </div>
       </div>

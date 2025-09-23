@@ -406,3 +406,34 @@
     padding: 8px;
   }
 }
+
+/* Select 스타일 */
+.filter-select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  font-size: 0.9rem;
+  min-width: 140px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.filter-select:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.filter-select option {
+  background: #333;
+  color: white;
+}
