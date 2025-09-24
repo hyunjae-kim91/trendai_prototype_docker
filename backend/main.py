@@ -324,6 +324,50 @@ async def get_item_pattern():
             "message": "아이템 패턴 데이터 조회 중 오류가 발생했습니다."
         }
 
+@app.get("/api/item-detail")
+async def get_item_detail():
+    """아이템 센싱 디테일 데이터 조회 API"""
+    try:
+        # PostgreSQL 연결
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 아이템 디테일 데이터 조회
+        cursor.execute("""
+            SELECT 
+                category_l1,
+                category_l3,
+                follower_count,
+                post_date,
+                post_year,
+                post_month,
+                detail_1
+            FROM ai_image_dm.instagram_classification_web_date_follow 
+            WHERE detail_1 IS NOT NULL 
+            AND detail_1 != ''
+            AND detail_1 != 'null'
+        """)
+        result = cursor.fetchall()
+        
+        # 딕셔너리로 변환
+        data = [dict(row) for row in result]
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "data": data,
+            "count": len(data),
+            "message": f"성공적으로 {len(data)}개의 아이템 디테일 데이터를 조회했습니다."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "아이템 디테일 데이터 조회 중 오류가 발생했습니다."
+        }
+
 if __name__ == "__main__":
     import uvicorn
     print("🚀 서버 시작 중...")
