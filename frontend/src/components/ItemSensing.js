@@ -3,6 +3,7 @@ import Navigation from "./Navigation";
 import ColorAnalysis from "./ColorAnalysis";
 import PatternAnalysis from "./PatternAnalysis";
 import DetailAnalysis from "./DetailAnalysis";
+import TypeAnalysis from "./TypeAnalysis";
 import "./ItemSensing.css";
 
 function ItemSensing() {
@@ -24,12 +25,7 @@ function ItemSensing() {
       case "detail":
         return <DetailAnalysis />;
       case "type":
-        return (
-          <div className="tab-content">
-            <h2>Type Analysis</h2>
-            <p>타입 트렌드 분석 기능이 여기에 구현됩니다.</p>
-          </div>
-        );
+        return <TypeAnalysis />;
       default:
         return null;
     }

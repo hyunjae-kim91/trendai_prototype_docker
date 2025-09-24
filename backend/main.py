@@ -368,6 +368,343 @@ async def get_item_detail():
             "message": "아이템 디테일 데이터 조회 중 오류가 발생했습니다."
         }
 
+@app.get("/api/item-type-categories")
+async def get_item_type_categories():
+    """아이템 타입 대분류 목록 조회 API"""
+    try:
+        # PostgreSQL 연결
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 대분류 목록 조회
+        cursor.execute("""
+            SELECT DISTINCT category_l1
+            FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+            WHERE category_l1 IS NOT NULL
+            ORDER BY category_l1
+        """)
+        result = cursor.fetchall()
+        
+        # 딕셔너리로 변환
+        data = [dict(row) for row in result]
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "data": data,
+            "count": len(data),
+            "message": f"성공적으로 {len(data)}개의 대분류를 조회했습니다."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "대분류 조회 중 오류가 발생했습니다."
+        }
+
+@app.get("/api/item-type-meta")
+async def get_item_type_meta():
+    """아이템 타입 메타데이터 조회 API (연도/월 정보)"""
+    try:
+        # PostgreSQL 연결
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 연도/월 데이터 조회
+        cursor.execute("""
+            SELECT DISTINCT post_year, post_month
+            FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+            WHERE post_year IS NOT NULL AND post_month IS NOT NULL
+            ORDER BY post_year DESC, post_month DESC
+        """)
+        result = cursor.fetchall()
+        
+        # 딕셔너리로 변환
+        data = [dict(row) for row in result]
+        
+        # 연도와 월을 별도로 추출
+        years = sorted(list(set([item['post_year'] for item in data if item['post_year']])))
+        months = sorted(list(set([item['post_month'] for item in data if item['post_month']])))
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "data": data,
+            "years": years,
+            "months": months,
+            "count": len(data),
+            "message": f"성공적으로 {len(data)}개의 메타데이터를 조회했습니다."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "메타데이터 조회 중 오류가 발생했습니다."
+        }
+
+@app.get("/api/item-type-keywords")
+async def get_item_type_keywords(
+    category_l1: str = None,
+    post_year: int = None,
+    post_month: int = None,
+    follower_count: int = None
+):
+    """아이템 타입 키워드 상위 10개 조회 API"""
+    try:
+        # PostgreSQL 연결
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # WHERE 조건 구성
+        where_conditions = []
+        params = []
+        
+        if category_l1:
+            where_conditions.append("category_l1 = %s")
+            params.append(category_l1)
+        
+        if post_year:
+            where_conditions.append("post_year = %s")
+            params.append(post_year)
+            
+        if post_month:
+            where_conditions.append("post_month = %s")
+            params.append(post_month)
+            
+        if follower_count:
+            where_conditions.append("follower_count >= %s")
+            params.append(follower_count)
+        
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+        
+        # 현재 월 데이터 조회
+        current_query = f"""
+            SELECT 
+                category_l3,
+                COUNT(*) as count
+            FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+            WHERE {where_clause}
+            AND category_l3 IS NOT NULL
+            AND category_l3 != ''
+            GROUP BY category_l3
+            ORDER BY count DESC
+            LIMIT 10
+        """
+        
+        cursor.execute(current_query, params)
+        current_result = cursor.fetchall()
+        
+        # 전월 데이터 조회 (비교용) - 연도/월이 모두 있을 때만
+        prev_data = {}
+        if post_year and post_month:
+            prev_month = post_month - 1 if post_month > 1 else 12
+            prev_year = post_year if post_month > 1 else (post_year - 1)
+            
+            # 전월용 WHERE 조건 구성
+            prev_where_conditions = []
+            prev_params = []
+            
+            if category_l1:
+                prev_where_conditions.append("category_l1 = %s")
+                prev_params.append(category_l1)
+            
+            prev_where_conditions.append("post_year = %s")
+            prev_params.append(prev_year)
+            
+            prev_where_conditions.append("post_month = %s")
+            prev_params.append(prev_month)
+                
+            if follower_count:
+                prev_where_conditions.append("follower_count >= %s")
+                prev_params.append(follower_count)
+            
+            prev_where_clause = " AND ".join(prev_where_conditions)
+            
+            prev_query = f"""
+                SELECT 
+                    category_l3,
+                    COUNT(*) as count
+                FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+                WHERE {prev_where_clause}
+                AND category_l3 IS NOT NULL
+                AND category_l3 != ''
+                GROUP BY category_l3
+            """
+            
+            cursor.execute(prev_query, prev_params)
+            prev_result = cursor.fetchall()
+            
+            # 전월 데이터를 딕셔너리로 변환
+            prev_data = {row['category_l3']: row['count'] for row in prev_result}
+        
+        # 현재 데이터에 전월 대비 증감률 계산
+        result_data = []
+        for row in current_result:
+            current_count = row['count']
+            prev_count = prev_data.get(row['category_l3'], 0)
+            
+            if prev_count > 0:
+                change_rate = ((current_count - prev_count) / prev_count) * 100
+            else:
+                change_rate = 100 if current_count > 0 else 0
+            
+            result_data.append({
+                'category_l3': row['category_l3'],
+                'count': current_count,
+                'prev_count': prev_count,
+                'change_rate': round(change_rate, 2)
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "data": result_data,
+            "count": len(result_data),
+            "message": f"성공적으로 {len(result_data)}개의 아이템 키워드를 조회했습니다."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "아이템 키워드 조회 중 오류가 발생했습니다."
+        }
+
+@app.get("/api/item-type-items")
+async def get_item_type_items(
+    category_l3: str,
+    category_l1: str = None,
+    post_year: int = None,
+    post_month: int = None,
+    follower_count: int = None
+):
+    """선택된 아이템의 유형 상위 10개 조회 API"""
+    try:
+        # PostgreSQL 연결
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # WHERE 조건 구성
+        where_conditions = ["category_l3 = %s"]
+        params = [category_l3]
+        
+        if category_l1:
+            where_conditions.append("category_l1 = %s")
+            params.append(category_l1)
+        
+        if post_year:
+            where_conditions.append("post_year = %s")
+            params.append(post_year)
+            
+        if post_month:
+            where_conditions.append("post_month = %s")
+            params.append(post_month)
+            
+        if follower_count:
+            where_conditions.append("follower_count >= %s")
+            params.append(follower_count)
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        # 현재 월 데이터 조회
+        current_query = f"""
+            SELECT 
+                item_type,
+                COUNT(*) as count
+            FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+            WHERE {where_clause}
+            AND item_type IS NOT NULL
+            AND item_type != ''
+            GROUP BY item_type
+            ORDER BY count DESC
+            LIMIT 10
+        """
+        
+        cursor.execute(current_query, params)
+        current_result = cursor.fetchall()
+        
+        # 전월 데이터 조회 (비교용) - 연도/월이 모두 있을 때만
+        prev_data = {}
+        if post_year and post_month:
+            prev_month = post_month - 1 if post_month > 1 else 12
+            prev_year = post_year if post_month > 1 else (post_year - 1)
+            
+            # 전월용 WHERE 조건 구성
+            prev_where_conditions = ["category_l3 = %s"]
+            prev_params = [category_l3]
+            
+            if category_l1:
+                prev_where_conditions.append("category_l1 = %s")
+                prev_params.append(category_l1)
+            
+            prev_where_conditions.append("post_year = %s")
+            prev_params.append(prev_year)
+            
+            prev_where_conditions.append("post_month = %s")
+            prev_params.append(prev_month)
+                
+            if follower_count:
+                prev_where_conditions.append("follower_count >= %s")
+                prev_params.append(follower_count)
+            
+            prev_where_clause = " AND ".join(prev_where_conditions)
+            
+            prev_query = f"""
+                SELECT 
+                    item_type,
+                    COUNT(*) as count
+                FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+                WHERE {prev_where_clause}
+                AND item_type IS NOT NULL
+                AND item_type != ''
+                GROUP BY item_type
+            """
+            
+            cursor.execute(prev_query, prev_params)
+            prev_result = cursor.fetchall()
+            
+            # 전월 데이터를 딕셔너리로 변환
+            prev_data = {row['item_type']: row['count'] for row in prev_result}
+        
+        # 현재 데이터에 전월 대비 증감률 계산
+        result_data = []
+        for row in current_result:
+            current_count = row['count']
+            prev_count = prev_data.get(row['item_type'], 0)
+            
+            if prev_count > 0:
+                change_rate = ((current_count - prev_count) / prev_count) * 100
+            else:
+                change_rate = 100 if current_count > 0 else 0
+            
+            result_data.append({
+                'item_type': row['item_type'],
+                'count': current_count,
+                'prev_count': prev_count,
+                'change_rate': round(change_rate, 2)
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "data": result_data,
+            "count": len(result_data),
+            "message": f"성공적으로 {len(result_data)}개의 아이템 유형을 조회했습니다."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "아이템 유형 조회 중 오류가 발생했습니다."
+        }
+
 if __name__ == "__main__":
     import uvicorn
     print("🚀 서버 시작 중...")
