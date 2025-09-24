@@ -385,11 +385,21 @@
   gap: 20px;
 }
 
+/* 이미지 로딩 상태에 따른 정렬 */
+.image-item.image-loaded {
+  order: 0; /* 로딩 성공한 이미지를 먼저 표시 */
+}
+
+.image-item.image-error {
+  order: 2; /* 로딩 실패한 이미지를 나중에 표시 */
+}
+
 .image-item {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease;
+  order: 1; /* 기본 순서 */
 }
 
 .image-item:hover {

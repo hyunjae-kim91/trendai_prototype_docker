@@ -16,8 +16,8 @@ function Mood2Analysis() {
   const [displayKeywords, setDisplayKeywords] = useState([]);
 
   useEffect(() => {
-    // CSV 데이터를 파싱하여 키워드별로 그룹화
-    parseCSVData();
+    // DB 데이터를 가져와서 키워드별로 그룹화
+    fetchStyleData();
     // 무드 센싱 데이터 가져오기
     fetchMoodCategories();
   }, []);
@@ -48,58 +48,56 @@ function Mood2Analysis() {
     }
   };
 
-  const parseCSVData = async () => {
+  const fetchStyleData = async () => {
     try {
-      const response = await fetch("/data/temp_style.csv");
-      const csvText = await response.text();
-      const lines = csvText.split("\n");
+      console.log("무드 스타일 API 호출 시작...");
+      const response = await fetch("http://localhost:8001/api/mood-style");
+      console.log("API 응답 상태:", response.status);
 
-      console.log("총 라인 수:", lines.length);
-      console.log("첫 번째 라인:", lines[0]);
-      console.log("두 번째 라인:", lines[1]);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-      const keywordMap = new Map();
-      let processedCount = 0;
-      let errorCount = 0;
+      const result = await response.json();
+      console.log("API 응답 데이터:", result);
 
-      // 헤더 제외하고 데이터 처리
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+      if (result.success) {
+        const keywordMap = new Map();
+        let processedCount = 0;
+        let errorCount = 0;
 
-        // 더 강력한 CSV 파싱 - 쉼표로 분리하되 따옴표 안의 쉼표는 무시
-        const parts = [];
-        let current = "";
-        let inQuotes = false;
-
-        for (let j = 0; j < line.length; j++) {
-          const char = line[j];
-          if (char === '"') {
-            if (inQuotes && line[j + 1] === '"') {
-              // 이스케이프된 따옴표
-              current += '"';
-              j++; // 다음 따옴표 건너뛰기
-            } else {
-              // 따옴표 시작/끝
-              inQuotes = !inQuotes;
-            }
-          } else if (char === "," && !inQuotes) {
-            // 쉼표로 분리
-            parts.push(current);
-            current = "";
-          } else {
-            current += char;
-          }
-        }
-        parts.push(current); // 마지막 부분 추가
-
-        if (parts.length >= 2) {
-          const imageUrl = parts[0];
-          const descStyle = parts[1];
+        // DB 데이터에서 키워드 추출
+        result.data.forEach((item) => {
+          const imageUrl = item.s3_thumbnail_key;
+          const descStyle = item.desc_style;
 
           // desc_style에서 키워드 추출
           try {
-            const keywords = JSON.parse(descStyle);
+            let keywords;
+
+            // descStyle이 이미 배열인지 확인
+            if (Array.isArray(descStyle)) {
+              // 이미 배열 형태
+              keywords = descStyle;
+            } else if (typeof descStyle === "string") {
+              // 문자열 형태인 경우
+              if (descStyle.startsWith("[") && descStyle.endsWith("]")) {
+                // JSON 배열 형태
+                keywords = JSON.parse(descStyle);
+              } else {
+                // 쉼표로 구분된 문자열 형태
+                keywords = descStyle.split(",").map((k) => k.trim());
+              }
+            } else {
+              // 예상치 못한 타입
+              console.warn(
+                "예상치 못한 descStyle 타입:",
+                typeof descStyle,
+                descStyle
+              );
+              keywords = [];
+            }
+
             if (Array.isArray(keywords)) {
               keywords.forEach((keyword) => {
                 if (typeof keyword === "string" && keyword.trim()) {
@@ -115,35 +113,38 @@ function Mood2Analysis() {
             errorCount++;
             if (errorCount <= 5) {
               // 처음 5개 오류만 로그
-              console.error("JSON 파싱 오류:", e, "데이터:", descStyle);
+              console.error("키워드 파싱 오류:", e, "데이터:", descStyle);
             }
           }
+        });
+
+        console.log("처리된 라인 수:", processedCount);
+        console.log("오류 수:", errorCount);
+        console.log("추출된 키워드 수:", keywordMap.size);
+
+        // 키워드를 빈도수 순으로 정렬
+        const sortedKeywords = Array.from(keywordMap.entries())
+          .map(([keyword, images]) => ({
+            keyword,
+            count: images.length,
+            images,
+          }))
+          .sort((a, b) => b.count - a.count);
+
+        console.log("정렬된 키워드 수:", sortedKeywords.length);
+        if (sortedKeywords.length > 0) {
+          console.log("상위 5개 키워드:", sortedKeywords.slice(0, 5));
         }
+
+        setKeywords(sortedKeywords);
+        setDisplayKeywords(sortedKeywords); // 초기에는 모든 키워드 표시
+        setLoading(false);
+      } else {
+        console.error("API 응답 실패:", result.message);
+        setLoading(false);
       }
-
-      console.log("처리된 라인 수:", processedCount);
-      console.log("오류 수:", errorCount);
-      console.log("추출된 키워드 수:", keywordMap.size);
-
-      // 키워드를 빈도수 순으로 정렬
-      const sortedKeywords = Array.from(keywordMap.entries())
-        .map(([keyword, images]) => ({
-          keyword,
-          count: images.length,
-          images,
-        }))
-        .sort((a, b) => b.count - a.count);
-
-      console.log("정렬된 키워드 수:", sortedKeywords.length);
-      if (sortedKeywords.length > 0) {
-        console.log("상위 5개 키워드:", sortedKeywords.slice(0, 5));
-      }
-
-      setKeywords(sortedKeywords);
-      setDisplayKeywords(sortedKeywords); // 초기에는 모든 키워드 표시
-      setLoading(false);
     } catch (error) {
-      console.error("CSV 데이터 로딩 오류:", error);
+      console.error("무드 스타일 데이터 로딩 오류:", error);
       setLoading(false);
     }
   };
@@ -344,11 +345,15 @@ function Mood2Analysis() {
                 <img
                   src={imageUrl}
                   alt={`${selectedKeyword.keyword} 이미지 ${index + 1}`}
+                  onLoad={(e) => {
+                    // 이미지 로딩 성공 시 부모 요소에 성공 클래스 추가
+                    e.target.parentElement.classList.add("image-loaded");
+                  }}
                   onError={(e) => {
-                    // 이미지 로딩 실패 시 예시 이미지로 대체
-                    e.target.src = `https://via.placeholder.com/300x300/667eea/ffffff?text=Image+${
-                      index + 1
-                    }`;
+                    // 이미지 로딩 실패 시 부모 요소에 실패 클래스 추가
+                    e.target.parentElement.classList.add("image-error");
+                    // 실패한 이미지는 숨기거나 placeholder 표시
+                    e.target.style.display = "none";
                   }}
                 />
               </div>
