@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Navigation from "./Navigation";
+import Mood1Analysis from "./Mood1Analysis";
 import Mood2Analysis from "./Mood2Analysis";
 import "./MoodSensing.css";
 
@@ -14,12 +15,7 @@ function MoodSensing() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "mood1":
-        return (
-          <div className="tab-content">
-            <h2>가칭1 분석</h2>
-            <p>가칭1 무드 트렌드 분석 기능이 여기에 구현됩니다.</p>
-          </div>
-        );
+        return <Mood1Analysis />;
       case "mood2":
         return <Mood2Analysis />;
       default:
