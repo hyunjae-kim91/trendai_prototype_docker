@@ -143,29 +143,41 @@ async def get_mood_rate():
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 무드 레이트 데이터 조회
+        # 간단한 테스트 쿼리
         cursor.execute("""
-            SELECT 
-                date_posted,
-                category_main,
-                category_sub,
-                mood_category,
-                mood_look,
-                pattern,
-                color,
-                detail1,
-                thumbnail_s3_url
-            FROM llm_poc.mood_rate 
-            WHERE date_posted IS NOT NULL
-            ORDER BY date_posted DESC
+            SELECT COUNT(*) as total_count
+            FROM ai_image_dm.instagram_web_mood_rate
         """)
+        count_result = cursor.fetchone()
+        print("총 데이터 개수:", count_result)
+        
+        # 데이터가 있으면 조회
+        if count_result and count_result['total_count'] > 0:
+            cursor.execute("""
+                SELECT 
+                    post_date,
+                    category_l1,
+                    category_l3,
+                    mood_category,
+                    mood_look,
+                    pattern,
+                    color,
+                    detail_1,
+                    s3_key
+                FROM ai_image_dm.instagram_web_mood_rate 
+                ORDER BY post_date DESC
+            """)
+        else:
+            print("데이터가 없습니다.")
+            result = []
         result = cursor.fetchall()
         
         # 딕셔너리로 변환
         data = [dict(row) for row in result]
         
         # 카테고리 정보 추출
-        categories_main = list(set([item['category_main'] for item in data if item['category_main']]))
-        categories_sub = list(set([item['category_sub'] for item in data if item['category_sub']]))
+        categories_main = list(set([item['category_l1'] for item in data if item['category_l1']]))
+        categories_sub = list(set([item['category_l3'] for item in data if item['category_l3']]))
         
         cursor.close()
         conn.close()

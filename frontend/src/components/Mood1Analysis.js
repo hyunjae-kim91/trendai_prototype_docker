@@ -6,9 +6,19 @@ function Mood1Analysis() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 필터 상태
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // 필터 상태 (오늘 기준 1년 전 ~ 2025-03-01)
+  const getOneYearAgo = () => {
+    const today = new Date();
+    const oneYearAgo = new Date(
+      today.getFullYear() - 1,
+      today.getMonth(),
+      today.getDate()
+    );
+    return oneYearAgo.toISOString().split("T")[0];
+  };
+
+  const [startDate, setStartDate] = useState(getOneYearAgo());
+  const [endDate, setEndDate] = useState("2025-03-01");
   const [selectedMainCategory, setSelectedMainCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
 
@@ -42,6 +52,18 @@ function Mood1Analysis() {
     }
   }, [selectedMoodCategory, selectedMoodLook]);
 
+  // DB 컬럼명을 프론트엔드에서 사용하는 이름으로 매핑
+  const mapDataColumns = (rawData) => {
+    return rawData.map((item) => ({
+      ...item,
+      date_posted: item.post_date,
+      category_main: item.category_l1,
+      category_sub: item.category_l3,
+      detail1: item.detail_1,
+      thumbnail_s3_url: item.s3_key,
+    }));
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -49,10 +71,12 @@ function Mood1Analysis() {
       const result = await response.json();
 
       if (result.success) {
-        setData(result.data);
+        // 컬럼명 매핑
+        const mappedData = mapDataColumns(result.data);
+        setData(mappedData);
         setMainCategories(result.categories_main);
         setSubCategories(result.categories_sub);
-        processChartData(result.data);
+        processChartData(mappedData);
       } else {
         setError(result.message);
       }
@@ -65,11 +89,30 @@ function Mood1Analysis() {
   };
 
   const processChartData = (rawData) => {
+    console.log("🔍 필터링 전 데이터 개수:", rawData.length);
+    console.log("📅 현재 날짜 필터:", { startDate, endDate });
+    console.log("🏷️ 현재 카테고리 필터:", {
+      selectedMainCategory,
+      selectedSubCategory,
+    });
+
     // 필터링된 데이터
     const filteredData = rawData.filter((item) => {
-      const dateMatch =
-        (!startDate || item.date_posted >= startDate) &&
-        (!endDate || item.date_posted <= endDate);
+      // 날짜 필터 로직 수정
+      let dateMatch = true;
+      if (startDate || endDate) {
+        if (!item.date_posted) {
+          dateMatch = false; // 날짜가 없는 데이터는 제외
+        } else {
+          const itemDate = new Date(item.date_posted);
+          const start = startDate ? new Date(startDate) : null;
+          const end = endDate ? new Date(endDate) : null;
+
+          dateMatch =
+            (!start || itemDate >= start) && (!end || itemDate <= end);
+        }
+      }
+
       const mainMatch =
         !selectedMainCategory || item.category_main === selectedMainCategory;
       const subMatch =
@@ -77,6 +120,8 @@ function Mood1Analysis() {
 
       return dateMatch && mainMatch && subMatch;
     });
+
+    console.log("✅ 필터링 후 데이터 개수:", filteredData.length);
 
     // mood_category 데이터 처리 (항상 실행)
     const moodCategoryCounts = {};
