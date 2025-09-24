@@ -28,6 +28,9 @@ function Mood1Analysis() {
   const [selectedMoodLook, setSelectedMoodLook] = useState(null);
   const [isMoodLookMode, setIsMoodLookMode] = useState(false);
 
+  // 이미지 갤러리 데이터
+  const [filteredImages, setFilteredImages] = useState([]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -275,6 +278,8 @@ function Mood1Analysis() {
           .sort((a, b) => b.value - a.value)
       );
     }
+
+    // 이미지 갤러리는 서브 차트 클릭 시에만 표시되도록 여기서는 처리하지 않음
   };
 
   const handleFilterChange = () => {
@@ -286,19 +291,177 @@ function Mood1Analysis() {
     setSelectedMoodCategory(categoryName);
     setSelectedMoodLook(null); // Mood Look 선택 초기화
     setIsMoodLookMode(true);
+    setFilteredImages([]); // 이미지 갤러리 초기화
     // processChartData는 useEffect에서 처리됨
   };
 
   const handleMoodLookClick = (lookName) => {
     console.log("클릭된 Mood Look:", lookName);
     setSelectedMoodLook(lookName);
+    setFilteredImages([]); // 이미지 갤러리 초기화
     // processChartData는 useEffect에서 처리됨
+  };
+
+  // 현재 적용된 필터들로 필터링된 데이터를 가져오는 함수
+  const getCurrentFilteredData = () => {
+    let filteredData = data;
+
+    // 날짜 필터 적용
+    if (startDate || endDate) {
+      filteredData = filteredData.filter((item) => {
+        if (!item.date_posted) return false;
+        const itemDate = new Date(item.date_posted);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+
+        const dateMatch =
+          (!start || itemDate >= start) && (!end || itemDate <= end);
+        return dateMatch;
+      });
+    }
+
+    // 대분류 필터 적용
+    if (selectedMainCategory) {
+      filteredData = filteredData.filter(
+        (item) => item.category_main === selectedMainCategory
+      );
+    }
+
+    // 소분류 필터 적용
+    if (selectedSubCategory) {
+      filteredData = filteredData.filter(
+        (item) => item.category_sub === selectedSubCategory
+      );
+    }
+
+    return filteredData;
+  };
+
+  const handlePatternClick = (patternName) => {
+    console.log("클릭된 Pattern:", patternName);
+
+    // 3가지 필터 모두 적용: 날짜/카테고리 필터 + Mood Category/Look + Pattern
+    let filteredData = getCurrentFilteredData();
+
+    // Mood Category 필터 적용
+    if (selectedMoodCategory) {
+      filteredData = filteredData.filter(
+        (item) => item.mood_category === selectedMoodCategory
+      );
+    }
+
+    // Mood Look 필터 적용
+    if (selectedMoodLook) {
+      filteredData = filteredData.filter(
+        (item) => item.mood_look === selectedMoodLook
+      );
+    }
+
+    // Pattern 필터 적용
+    const patternFilteredImages = filteredData.filter(
+      (item) =>
+        item.pattern === patternName &&
+        item.thumbnail_s3_url &&
+        item.thumbnail_s3_url !== null &&
+        item.thumbnail_s3_url !== "null" &&
+        item.thumbnail_s3_url.trim() !== ""
+    );
+
+    // 중복 제거 (thumbnail_s3_url 기준)
+    const uniqueImages = patternFilteredImages.filter(
+      (item, index, self) =>
+        index ===
+        self.findIndex((t) => t.thumbnail_s3_url === item.thumbnail_s3_url)
+    );
+
+    setFilteredImages(uniqueImages);
+  };
+
+  const handleColorClick = (colorName) => {
+    console.log("클릭된 Color:", colorName);
+
+    // 3가지 필터 모두 적용: 날짜/카테고리 필터 + Mood Category/Look + Color
+    let filteredData = getCurrentFilteredData();
+
+    // Mood Category 필터 적용
+    if (selectedMoodCategory) {
+      filteredData = filteredData.filter(
+        (item) => item.mood_category === selectedMoodCategory
+      );
+    }
+
+    // Mood Look 필터 적용
+    if (selectedMoodLook) {
+      filteredData = filteredData.filter(
+        (item) => item.mood_look === selectedMoodLook
+      );
+    }
+
+    // Color 필터 적용
+    const colorFilteredImages = filteredData.filter(
+      (item) =>
+        item.color === colorName &&
+        item.thumbnail_s3_url &&
+        item.thumbnail_s3_url !== null &&
+        item.thumbnail_s3_url !== "null" &&
+        item.thumbnail_s3_url.trim() !== ""
+    );
+
+    // 중복 제거 (thumbnail_s3_url 기준)
+    const uniqueImages = colorFilteredImages.filter(
+      (item, index, self) =>
+        index ===
+        self.findIndex((t) => t.thumbnail_s3_url === item.thumbnail_s3_url)
+    );
+
+    setFilteredImages(uniqueImages);
+  };
+
+  const handleDetail1Click = (detailName) => {
+    console.log("클릭된 Detail1:", detailName);
+
+    // 3가지 필터 모두 적용: 날짜/카테고리 필터 + Mood Category/Look + Detail1
+    let filteredData = getCurrentFilteredData();
+
+    // Mood Category 필터 적용
+    if (selectedMoodCategory) {
+      filteredData = filteredData.filter(
+        (item) => item.mood_category === selectedMoodCategory
+      );
+    }
+
+    // Mood Look 필터 적용
+    if (selectedMoodLook) {
+      filteredData = filteredData.filter(
+        (item) => item.mood_look === selectedMoodLook
+      );
+    }
+
+    // Detail1 필터 적용
+    const detailFilteredImages = filteredData.filter(
+      (item) =>
+        item.detail1 === detailName &&
+        item.thumbnail_s3_url &&
+        item.thumbnail_s3_url !== null &&
+        item.thumbnail_s3_url !== "null" &&
+        item.thumbnail_s3_url.trim() !== ""
+    );
+
+    // 중복 제거 (thumbnail_s3_url 기준)
+    const uniqueImages = detailFilteredImages.filter(
+      (item, index, self) =>
+        index ===
+        self.findIndex((t) => t.thumbnail_s3_url === item.thumbnail_s3_url)
+    );
+
+    setFilteredImages(uniqueImages);
   };
 
   const resetToMoodCategory = () => {
     setSelectedMoodCategory(null);
     setSelectedMoodLook(null);
     setIsMoodLookMode(false);
+    setFilteredImages([]); // 이미지 갤러리 초기화
     processChartData(data);
   };
 
@@ -573,23 +736,48 @@ function Mood1Analysis() {
           {renderDonutChart(
             patternData,
             "Pattern 비중",
-            null,
+            handlePatternClick,
             selectedMoodCategory || selectedMoodLook
           )}
           {renderDonutChart(
             colorData,
             "Color 비중",
-            null,
+            handleColorClick,
             selectedMoodCategory || selectedMoodLook
           )}
           {renderDonutChart(
             detail1Data,
             "Detail1 비중",
-            null,
+            handleDetail1Click,
             selectedMoodCategory || selectedMoodLook
           )}
         </div>
       </div>
+
+      {/* 이미지 갤러리 섹션 */}
+      {filteredImages.length > 0 && (
+        <div className="image-gallery-section">
+          <h3>필터링된 이미지 갤러리</h3>
+          <div className="image-gallery">
+            {filteredImages.map((item, index) => (
+              <div key={index} className="gallery-item">
+                <img
+                  src={item.thumbnail_s3_url}
+                  alt={`Mood: ${item.mood_category} - ${item.mood_look}`}
+                  className="gallery-image"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                  }}
+                />
+                <div className="gallery-info">
+                  <div className="gallery-mood">{item.mood_category}</div>
+                  <div className="gallery-look">{item.mood_look}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

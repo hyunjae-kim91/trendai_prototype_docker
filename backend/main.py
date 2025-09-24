@@ -152,7 +152,8 @@ async def get_mood_rate():
                 mood_look,
                 pattern,
                 color,
-                detail1
+                detail1,
+                thumbnail_s3_url
             FROM llm_poc.mood_rate 
             WHERE date_posted IS NOT NULL
             ORDER BY date_posted DESC
