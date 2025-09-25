@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ImageModal from "./ImageModal";
 import "./Mood1Analysis.css";
 
 function Mood1Analysis() {
@@ -40,6 +41,10 @@ function Mood1Analysis() {
 
   // 이미지 갤러리 데이터
   const [filteredImages, setFilteredImages] = useState([]);
+
+  // 이미지 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedImageData, setSelectedImageData] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -462,6 +467,22 @@ function Mood1Analysis() {
     setFilteredImages(uniqueImages);
   };
 
+  // 이미지 클릭 핸들러
+  const handleImageClick = (imageData) => {
+    const modalData = {
+      ...imageData,
+      imageUrl: imageData.thumbnail_s3_url,
+    };
+    setSelectedImageData(modalData);
+    setIsModalOpen(true);
+  };
+
+  // 모달 닫기 핸들러
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedImageData(null);
+  };
+
   const handleDetail1Click = (detailName) => {
     console.log("클릭된 Detail1:", detailName);
 
@@ -805,7 +826,12 @@ function Mood1Analysis() {
           <h3>필터링된 이미지 갤러리</h3>
           <div className="image-gallery">
             {filteredImages.map((item, index) => (
-              <div key={index} className="gallery-item">
+              <div
+                key={index}
+                className="gallery-item"
+                onClick={() => handleImageClick(item)}
+                style={{ cursor: "pointer" }}
+              >
                 <img
                   src={item.thumbnail_s3_url}
                   alt={`Mood: ${item.mood_category} - ${item.mood_look}`}
@@ -823,6 +849,13 @@ function Mood1Analysis() {
           </div>
         </div>
       )}
+
+      {/* 이미지 모달 */}
+      <ImageModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        imageData={selectedImageData}
+      />
     </div>
   );
 }

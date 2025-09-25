@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ImageModal from "./ImageModal";
 import "./TypeAnalysis.css";
 
 function TypeAnalysis() {
@@ -378,6 +379,34 @@ function TypeAnalysis() {
       coordiItem: itemType,
     }));
     fetchCoordiImages(itemType, category);
+  };
+
+  // 이미지 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedImageData, setSelectedImageData] = useState(null);
+
+  // 이미지 클릭 핸들러
+  const handleImageClick = (imageData) => {
+    const modalData = {
+      ...imageData,
+      imageUrl: imageData.s3_key,
+      // 기본 정보 매핑
+      mood_category: imageData.mood_category || null,
+      mood_look: imageData.mood_look || null,
+      pattern: imageData.pattern || null,
+      color: imageData.color || null,
+      category_main: imageData.category_l1 || null,
+      category_sub: imageData.category_l3 || null,
+      date_posted: imageData.post_date || null,
+    };
+    setSelectedImageData(modalData);
+    setIsModalOpen(true);
+  };
+
+  // 모달 닫기 핸들러
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedImageData(null);
   };
 
   const formatFollowers = (value) => {
@@ -875,7 +904,12 @@ function TypeAnalysis() {
               <div className="image-grid">
                 {coordiImages.length > 0 ? (
                   coordiImages.map((image, index) => (
-                    <div key={index} className="image-item">
+                    <div
+                      key={index}
+                      className="image-item"
+                      onClick={() => handleImageClick(image)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <img
                         src={image.s3_key}
                         alt={`${image.item_type} 이미지`}
@@ -900,6 +934,13 @@ function TypeAnalysis() {
           )}
         </div>
       )}
+
+      {/* 이미지 모달 */}
+      <ImageModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        imageData={selectedImageData}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { clothingCategories } from "../data/clothingCategories";
+import ImageModal from "./ImageModal";
 import "./DetailAnalysis.css";
 
 function DetailAnalysis() {
@@ -32,6 +33,10 @@ function DetailAnalysis() {
   const [detailImages, setDetailImages] = useState([]);
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
+
+  // 이미지 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedImageData, setSelectedImageData] = useState(null);
   const [error, setError] = useState("");
 
   // 데이터 로딩
@@ -188,6 +193,30 @@ function DetailAnalysis() {
     setDetailImages([]);
     setError("");
     fetchDetailImages(detail, currentPercent);
+  };
+
+  // 이미지 클릭 핸들러
+  const handleImageClick = (imageData) => {
+    const modalData = {
+      ...imageData,
+      imageUrl: imageData.s3_key,
+      // 기본 정보 매핑
+      mood_category: imageData.mood_category || null,
+      mood_look: imageData.mood_look || null,
+      pattern: imageData.pattern || null,
+      color: imageData.color || null,
+      category_main: imageData.category_l1 || null,
+      category_sub: imageData.category_l3 || null,
+      date_posted: imageData.post_date || null,
+    };
+    setSelectedImageData(modalData);
+    setIsModalOpen(true);
+  };
+
+  // 모달 닫기 핸들러
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedImageData(null);
   };
 
   // 데이터 분석 및 처리
@@ -573,7 +602,12 @@ function DetailAnalysis() {
               <div className="image-grid">
                 {detailImages.length > 0 ? (
                   detailImages.map((image, index) => (
-                    <div key={index} className="image-item">
+                    <div
+                      key={index}
+                      className="image-item"
+                      onClick={() => handleImageClick(image)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <img
                         src={image.s3_key}
                         alt={`${selectedDetail} 디테일 이미지`}
@@ -603,6 +637,13 @@ function DetailAnalysis() {
       )}
 
       {error && <div className="error-message">{error}</div>}
+
+      {/* 이미지 모달 */}
+      <ImageModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        imageData={selectedImageData}
+      />
     </div>
   );
 }

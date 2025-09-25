@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ImageModal from "./ImageModal";
 import "./Mood2Analysis.css";
 
 function Mood2Analysis() {
@@ -10,6 +11,10 @@ function Mood2Analysis() {
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
   const [imagesPerPage] = useState(20); // 페이지당 이미지 개수
+
+  // 이미지 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedImageData, setSelectedImageData] = useState(null);
 
   // 무드 센싱 필터 상태
   const [moodCategories, setMoodCategories] = useState({});
@@ -162,6 +167,35 @@ function Mood2Analysis() {
   const handleDeselect = () => {
     setSelectedKeyword(null);
     setImages([]);
+  };
+
+  // 이미지 클릭 핸들러
+  const handleImageClick = (imageUrl) => {
+    // 이미지 URL에서 해당하는 이미지 데이터를 찾기
+    const imageData = images.find((img) => img === imageUrl);
+    if (imageData) {
+      const modalData = {
+        imageUrl: imageUrl,
+        // 기본 정보는 선택된 키워드에서 가져오기 (키워드 데이터에는 기본 정보가 없으므로 빈 값으로 설정)
+        mood_category: selectedKeyword?.mood_category || null,
+        mood_look: selectedKeyword?.mood_look || null,
+        pattern: selectedKeyword?.pattern || null,
+        color: selectedKeyword?.color || null,
+        category_main: selectedKeyword?.category_main || null,
+        category_sub: selectedKeyword?.category_sub || null,
+        date_posted: selectedKeyword?.date_posted || null,
+        // 키워드 정보 추가
+        keyword: selectedKeyword?.keyword || null,
+      };
+      setSelectedImageData(modalData);
+      setIsModalOpen(true);
+    }
+  };
+
+  // 모달 닫기 핸들러
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedImageData(null);
   };
 
   // 무드 센싱 필터 핸들러
@@ -371,7 +405,12 @@ function Mood2Analysis() {
 
           <div className="images-grid">
             {currentImages.map((imageUrl, index) => (
-              <div key={startIndex + index} className="image-item">
+              <div
+                key={startIndex + index}
+                className="image-item"
+                onClick={() => handleImageClick(imageUrl)}
+                style={{ cursor: "pointer" }}
+              >
                 <img
                   src={imageUrl}
                   alt={`${selectedKeyword.keyword} 이미지 ${
@@ -466,6 +505,13 @@ function Mood2Analysis() {
           )}
         </div>
       )}
+
+      {/* 이미지 모달 */}
+      <ImageModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        imageData={selectedImageData}
+      />
     </div>
   );
 }
