@@ -458,3 +458,164 @@
     align-items: flex-start;
   }
 }
+
+/* 페이지네이션 스타일 */
+.pagination {
+  margin-top: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.pagination-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.page-info {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+  min-width: 60px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pagination-btn:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.page-number {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+  min-width: 40px;
+  text-align: center;
+}
+
+.page-number:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.page-number.active {
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.8) 0%,
+    rgba(118, 75, 162, 0.8) 100%
+  );
+  border-color: rgba(102, 126, 234, 0.6);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.page-ellipsis {
+  color: rgba(255, 255, 255, 0.6);
+  padding: 8px 4px;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+/* 반응형 페이지네이션 */
+@media (max-width: 768px) {
+  .pagination {
+    padding: 15px;
+  }
+
+  .pagination-info {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .pagination-controls {
+    gap: 5px;
+  }
+
+  .pagination-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    min-width: 50px;
+  }
+
+  .page-number {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    min-width: 35px;
+  }
+
+  .page-numbers {
+    gap: 3px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-numbers {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pagination-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    min-width: 45px;
+  }
+
+  .page-number {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+    min-width: 30px;
+  }
+}

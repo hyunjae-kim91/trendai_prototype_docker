@@ -7,6 +7,10 @@ function Mood2Analysis() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const [imagesPerPage] = useState(20); // 페이지당 이미지 개수
+
   // 무드 센싱 필터 상태
   const [moodCategories, setMoodCategories] = useState({});
   const [selectedCate1, setSelectedCate1] = useState("");
@@ -152,6 +156,7 @@ function Mood2Analysis() {
   const handleKeywordClick = (keywordData) => {
     setSelectedKeyword(keywordData);
     setImages(keywordData.images);
+    setCurrentPage(1); // 키워드 선택 시 첫 페이지로 이동
   };
 
   const handleDeselect = () => {
@@ -210,6 +215,31 @@ function Mood2Analysis() {
     setSelectedCate2("");
     setFilteredKeywords([]);
     setDisplayKeywords(keywords); // 모든 키워드 표시
+  };
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(images.length / imagesPerPage);
+  const startIndex = (currentPage - 1) * imagesPerPage;
+  const endIndex = startIndex + imagesPerPage;
+  const currentImages = images.slice(startIndex, endIndex);
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // 이전 페이지
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // 다음 페이지
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
   };
 
   if (loading) {
@@ -340,11 +370,13 @@ function Mood2Analysis() {
           </div>
 
           <div className="images-grid">
-            {images.map((imageUrl, index) => (
-              <div key={index} className="image-item">
+            {currentImages.map((imageUrl, index) => (
+              <div key={startIndex + index} className="image-item">
                 <img
                   src={imageUrl}
-                  alt={`${selectedKeyword.keyword} 이미지 ${index + 1}`}
+                  alt={`${selectedKeyword.keyword} 이미지 ${
+                    startIndex + index + 1
+                  }`}
                   onLoad={(e) => {
                     // 이미지 로딩 성공 시 부모 요소에 성공 클래스 추가
                     e.target.parentElement.classList.add("image-loaded");
@@ -359,6 +391,79 @@ function Mood2Analysis() {
               </div>
             ))}
           </div>
+
+          {/* 페이지네이션 UI */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <div className="pagination-info">
+                <span>
+                  {startIndex + 1}-{Math.min(endIndex, images.length)} /{" "}
+                  {images.length}개 이미지
+                </span>
+                <span className="page-info">
+                  페이지 {currentPage} / {totalPages}
+                </span>
+              </div>
+
+              <div className="pagination-controls">
+                <button
+                  className="pagination-btn prev-btn"
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                >
+                  이전
+                </button>
+
+                <div className="page-numbers">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (pageNumber) => {
+                      // 페이지 번호 표시 로직 (최대 5개 페이지 번호만 표시)
+                      const showPage =
+                        pageNumber === 1 ||
+                        pageNumber === totalPages ||
+                        (pageNumber >= currentPage - 2 &&
+                          pageNumber <= currentPage + 2);
+
+                      if (!showPage) {
+                        // 생략된 페이지들 사이에 "..." 표시
+                        if (
+                          pageNumber === currentPage - 3 ||
+                          pageNumber === currentPage + 3
+                        ) {
+                          return (
+                            <span key={pageNumber} className="page-ellipsis">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNumber}
+                          className={`page-number ${
+                            currentPage === pageNumber ? "active" : ""
+                          }`}
+                          onClick={() => handlePageChange(pageNumber)}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+
+                <button
+                  className="pagination-btn next-btn"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
