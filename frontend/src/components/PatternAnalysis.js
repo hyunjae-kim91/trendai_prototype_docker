@@ -27,6 +27,13 @@ function PatternAnalysis() {
   const [availableMonths, setAvailableMonths] = useState([]);
   const [filteredMonths, setFilteredMonths] = useState([]);
 
+  // 이미지 갤러리 관련 상태
+  const [selectedPattern, setSelectedPattern] = useState("");
+  const [patternImages, setPatternImages] = useState([]);
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [error, setError] = useState("");
+
   // 데이터 로딩
   useEffect(() => {
     fetchPatternData();
@@ -117,6 +124,70 @@ function PatternAnalysis() {
     };
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
+    setSelectedPattern("");
+    setPatternImages([]);
+    setShowImageGallery(false);
+    setError("");
+  };
+
+  // 패턴 이미지 조회 함수
+  const fetchPatternImages = async (pattern, currentPercent) => {
+    try {
+      setImageLoading(true);
+      setError("");
+
+      const params = new URLSearchParams({
+        pattern: pattern,
+      });
+
+      if (appliedFilters.mainCategory) {
+        params.append("category_l1", appliedFilters.mainCategory);
+      }
+      if (appliedFilters.subCategory) {
+        params.append("category_l3", appliedFilters.subCategory);
+      }
+      if (appliedFilters.year) {
+        params.append("post_year", appliedFilters.year);
+      }
+      if (appliedFilters.month) {
+        params.append("post_month", appliedFilters.month);
+      }
+      if (appliedFilters.followersMin > 0) {
+        params.append("follower_count", appliedFilters.followersMin);
+      }
+
+      // 비중에 따라 이미지 수 동적 조정 (최소 10개, 최대 50개)
+      const imageLimit = Math.max(
+        10,
+        Math.min(50, Math.round(currentPercent * 2))
+      );
+      params.append("limit", imageLimit.toString());
+
+      const response = await fetch(
+        `http://localhost:8001/api/pattern-images?${params}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setPatternImages(data.data);
+        setShowImageGallery(true);
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("이미지를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // 패턴 클릭 핸들러
+  const handlePatternClick = (pattern, currentPercent) => {
+    setSelectedPattern(pattern);
+    setShowImageGallery(false);
+    setPatternImages([]);
+    setError("");
+    fetchPatternImages(pattern, currentPercent);
   };
 
   // 데이터 분석 및 처리
@@ -270,7 +341,16 @@ function PatternAnalysis() {
           </thead>
           <tbody>
             {data.map((item, index) => (
-              <tr key={item.pattern}>
+              <tr
+                key={item.pattern}
+                className={`pattern-row ${
+                  selectedPattern === item.pattern ? "selected" : ""
+                }`}
+                onClick={() =>
+                  handlePatternClick(item.pattern, item.currentPercent)
+                }
+                style={{ cursor: "pointer" }}
+              >
                 <td className="no-cell">{index + 1}</td>
                 <td className="keyword-cell">{item.pattern}</td>
                 <td className="weight-cell">{item.currentPercent}%</td>
@@ -471,6 +551,58 @@ function PatternAnalysis() {
         {renderTable(stable, "유지", "stable")}
         {renderTable(falling, "하락", "falling")}
       </div>
+
+      {/* 이미지 갤러리 섹션 */}
+      {(imageLoading || showImageGallery) && (
+        <div
+          className={`image-gallery-container ${
+            showImageGallery ? "show" : ""
+          }`}
+        >
+          {imageLoading ? (
+            <div className="image-loading">
+              <div className="loading-spinner"></div>
+              <h3>이미지 로딩 중...</h3>
+              <p>잠시만 기다려주세요.</p>
+            </div>
+          ) : (
+            <div className="image-gallery-results">
+              <h3>
+                {selectedPattern && <>{selectedPattern} 패턴 이미지 갤러리</>}
+              </h3>
+              <div className="image-grid">
+                {patternImages.length > 0 ? (
+                  patternImages.map((image, index) => (
+                    <div key={index} className="image-item">
+                      <img
+                        src={image.s3_key}
+                        alt={`${selectedPattern} 패턴 이미지`}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                      <div className="image-info">
+                        <span className="follower-count">
+                          {formatFollowers(image.follower_count)} 팔로워
+                        </span>
+                        <span className="category-info">
+                          {image.category_l1} - {image.category_l3}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-images">
+                    <p>표시할 이미지가 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 }

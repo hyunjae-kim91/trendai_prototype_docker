@@ -138,7 +138,7 @@ function ColorAnalysis() {
   };
 
   // 컬러 이미지 조회 함수
-  const fetchColorImages = async (color) => {
+  const fetchColorImages = async (color, currentPercent) => {
     try {
       setImageLoading(true);
       setError("");
@@ -163,7 +163,12 @@ function ColorAnalysis() {
         params.append("follower_count", appliedFilters.followersMin);
       }
 
-      params.append("limit", "20");
+      // 비중에 따라 이미지 수 동적 조정 (최소 10개, 최대 50개)
+      const imageLimit = Math.max(
+        10,
+        Math.min(50, Math.round(currentPercent * 2))
+      );
+      params.append("limit", imageLimit.toString());
 
       const response = await fetch(
         `http://localhost:8001/api/color-images?${params}`
@@ -184,12 +189,12 @@ function ColorAnalysis() {
   };
 
   // 컬러 클릭 핸들러
-  const handleColorClick = (color) => {
+  const handleColorClick = (color, currentPercent) => {
     setSelectedColor(color);
     setShowImageGallery(false);
     setColorImages([]);
     setError("");
-    fetchColorImages(color);
+    fetchColorImages(color, currentPercent);
   };
 
   // 데이터 분석 및 처리
@@ -411,7 +416,9 @@ function ColorAnalysis() {
                   className={`color-row ${
                     selectedColor === item.color ? "selected" : ""
                   }`}
-                  onClick={() => handleColorClick(item.color)}
+                  onClick={() =>
+                    handleColorClick(item.color, item.currentPercent)
+                  }
                   style={{ cursor: "pointer" }}
                 >
                   <td className="no-cell">{index + 1}</td>
