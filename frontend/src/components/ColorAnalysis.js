@@ -27,6 +27,13 @@ function ColorAnalysis() {
   const [availableMonths, setAvailableMonths] = useState([]);
   const [filteredMonths, setFilteredMonths] = useState([]);
 
+  // 이미지 갤러리 관련 상태
+  const [selectedColor, setSelectedColor] = useState("");
+  const [colorImages, setColorImages] = useState([]);
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [error, setError] = useState("");
+
   // 정렬 상태 관리
   const [sortConfig, setSortConfig] = useState({
     rising: { key: null, direction: "asc" },
@@ -124,6 +131,65 @@ function ColorAnalysis() {
     };
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
+    setSelectedColor("");
+    setColorImages([]);
+    setShowImageGallery(false);
+    setError("");
+  };
+
+  // 컬러 이미지 조회 함수
+  const fetchColorImages = async (color) => {
+    try {
+      setImageLoading(true);
+      setError("");
+
+      const params = new URLSearchParams({
+        color: color,
+      });
+
+      if (appliedFilters.mainCategory) {
+        params.append("category_l1", appliedFilters.mainCategory);
+      }
+      if (appliedFilters.subCategory) {
+        params.append("category_l3", appliedFilters.subCategory);
+      }
+      if (appliedFilters.year) {
+        params.append("post_year", appliedFilters.year);
+      }
+      if (appliedFilters.month) {
+        params.append("post_month", appliedFilters.month);
+      }
+      if (appliedFilters.followersMin > 0) {
+        params.append("follower_count", appliedFilters.followersMin);
+      }
+
+      params.append("limit", "20");
+
+      const response = await fetch(
+        `http://localhost:8001/api/color-images?${params}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setColorImages(data.data);
+        setShowImageGallery(true);
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("이미지를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // 컬러 클릭 핸들러
+  const handleColorClick = (color) => {
+    setSelectedColor(color);
+    setShowImageGallery(false);
+    setColorImages([]);
+    setError("");
+    fetchColorImages(color);
   };
 
   // 데이터 분석 및 처리
@@ -340,7 +406,14 @@ function ColorAnalysis() {
             </thead>
             <tbody>
               {sortedData.map((item, index) => (
-                <tr key={item.color}>
+                <tr
+                  key={item.color}
+                  className={`color-row ${
+                    selectedColor === item.color ? "selected" : ""
+                  }`}
+                  onClick={() => handleColorClick(item.color)}
+                  style={{ cursor: "pointer" }}
+                >
                   <td className="no-cell">{index + 1}</td>
                   <td className="keyword-cell">{item.color}</td>
                   <td className="weight-cell">{item.currentPercent}%</td>
@@ -542,6 +615,58 @@ function ColorAnalysis() {
         {renderTable(stable, "유지", "stable")}
         {renderTable(falling, "하락", "falling")}
       </div>
+
+      {/* 이미지 갤러리 섹션 */}
+      {(imageLoading || showImageGallery) && (
+        <div
+          className={`image-gallery-container ${
+            showImageGallery ? "show" : ""
+          }`}
+        >
+          {imageLoading ? (
+            <div className="image-loading">
+              <div className="loading-spinner"></div>
+              <h3>이미지 로딩 중...</h3>
+              <p>잠시만 기다려주세요.</p>
+            </div>
+          ) : (
+            <div className="image-gallery-results">
+              <h3>
+                {selectedColor && <>{selectedColor} 컬러 이미지 갤러리</>}
+              </h3>
+              <div className="image-grid">
+                {colorImages.length > 0 ? (
+                  colorImages.map((image, index) => (
+                    <div key={index} className="image-item">
+                      <img
+                        src={image.s3_key}
+                        alt={`${selectedColor} 컬러 이미지`}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                      <div className="image-info">
+                        <span className="follower-count">
+                          {formatFollowers(image.follower_count)} 팔로워
+                        </span>
+                        <span className="category-info">
+                          {image.category_l1} - {image.category_l3}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-images">
+                    <p>표시할 이미지가 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 }

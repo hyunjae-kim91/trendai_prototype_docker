@@ -819,6 +819,94 @@ async def get_coordi_combination(
             "message": "코디 조합 조회 중 오류가 발생했습니다."
         }
 
+@app.get("/api/color-images")
+async def get_color_images(
+    color: str,
+    category_l1: str = None,
+    category_l3: str = None,
+    post_year: int = None,
+    post_month: int = None,
+    follower_count: int = None,
+    limit: int = 20
+):
+    """컬러별 이미지 조회 API"""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # WHERE 조건 구성
+        where_conditions = []
+        params = []
+
+        where_conditions.append("color = %s")
+        params.append(color)
+
+        if category_l1:
+            where_conditions.append("category_l1 = %s")
+            params.append(category_l1)
+
+        if category_l3:
+            where_conditions.append("category_l3 = %s")
+            params.append(category_l3)
+
+        if post_year:
+            where_conditions.append("post_year = %s")
+            params.append(post_year)
+
+        if post_month:
+            where_conditions.append("post_month = %s")
+            params.append(post_month)
+
+        if follower_count:
+            where_conditions.append("follower_count >= %s")
+            params.append(follower_count)
+
+        where_clause = " AND ".join(where_conditions)
+
+        # s3_key가 있는 이미지들 조회
+        images_query = f"""
+            SELECT DISTINCT s3_key, post_id, category_l1, category_l3, follower_count, post_date
+            FROM ai_image_dm.instagram_classification_web_date_follow 
+            WHERE {where_clause}
+            AND s3_key IS NOT NULL
+            AND s3_key != ''
+            ORDER BY follower_count DESC
+            LIMIT %s
+        """
+
+        params.append(limit)
+        cursor.execute(images_query, params)
+        result = cursor.fetchall()
+
+        # 결과 데이터 정리
+        image_data = []
+        for row in result:
+            image_data.append({
+                's3_key': row['s3_key'],
+                'post_id': row['post_id'],
+                'category_l1': row['category_l1'],
+                'category_l3': row['category_l3'],
+                'follower_count': row['follower_count'],
+                'post_date': row['post_date']
+            })
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "success": True,
+            "data": image_data,
+            "count": len(image_data),
+            "message": f"성공적으로 {len(image_data)}개의 {color} 컬러 이미지를 조회했습니다."
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "컬러 이미지 조회 중 오류가 발생했습니다."
+        }
+
 @app.get("/api/coordi-images")
 async def get_coordi_images(
     item_type: str,
