@@ -6,7 +6,8 @@ function ColorAnalysis() {
   const [filters, setFilters] = useState({
     year: "",
     month: "",
-    followers: 0,
+    followersMin: 1000,
+    followersMax: 20000,
     mainCategory: "",
     subCategory: "",
   });
@@ -14,7 +15,8 @@ function ColorAnalysis() {
   const [appliedFilters, setAppliedFilters] = useState({
     year: "",
     month: "",
-    followers: 0,
+    followersMin: 1000,
+    followersMax: 20000,
     mainCategory: "",
     subCategory: "",
   });
@@ -108,7 +110,8 @@ function ColorAnalysis() {
     const resetFilters = {
       year: "",
       month: "",
-      followers: 0,
+      followersMin: 1000,
+      followersMax: 20000,
       mainCategory: "",
       subCategory: "",
     };
@@ -131,8 +134,9 @@ function ColorAnalysis() {
           item.category_l1 === appliedFilters.mainCategory) &&
         (!appliedFilters.subCategory ||
           item.category_l3 === appliedFilters.subCategory) &&
-        (!appliedFilters.followers ||
-          item.follower_count >= appliedFilters.followers)
+        item.follower_count &&
+        parseInt(item.follower_count) >= appliedFilters.followersMin &&
+        parseInt(item.follower_count) <= appliedFilters.followersMax
       );
     });
 
@@ -169,8 +173,9 @@ function ColorAnalysis() {
             item.category_l1 === appliedFilters.mainCategory) &&
           (!appliedFilters.subCategory ||
             item.category_l3 === appliedFilters.subCategory) &&
-          (!appliedFilters.followers ||
-            item.follower_count >= appliedFilters.followers)
+          item.follower_count &&
+          parseInt(item.follower_count) >= appliedFilters.followersMin &&
+          parseInt(item.follower_count) <= appliedFilters.followersMax
         );
       });
     }
@@ -190,33 +195,26 @@ function ColorAnalysis() {
     console.log("현재 월 데이터 수:", filteredData.length);
     console.log("전월 데이터 수:", previousData.length);
     console.log("컬러 통계:", colorStats);
+    console.log("총 컬러 종류 수:", Object.keys(colorStats).length);
 
     // 상승/유지/하락 분류
     const results = Object.entries(colorStats).map(([color, stats]) => {
-      // 현재 월 총합
+      // 현재 월 총합 (비중 계산용)
       const currentTotal = Object.values(colorStats).reduce(
         (sum, s) => sum + s.current,
-        0
-      );
-      // 전월 총합
-      const previousTotal = Object.values(colorStats).reduce(
-        (sum, s) => sum + s.previous,
         0
       );
 
       // 현재 월 비중
       const currentPercent =
         currentTotal > 0 ? (stats.current / currentTotal) * 100 : 0;
-      // 전월 비중
-      const previousPercent =
-        previousTotal > 0 ? (stats.previous / previousTotal) * 100 : 0;
 
-      // 전월대비 변화율 계산
+      // 전월대비 변화율 계산 (빈도 기준)
       let changePercent = 0;
-      if (previousPercent > 0) {
+      if (stats.previous > 0) {
         changePercent =
-          ((currentPercent - previousPercent) / previousPercent) * 100;
-      } else if (currentPercent > 0) {
+          ((stats.current - stats.previous) / stats.previous) * 100;
+      } else if (stats.current > 0) {
         // 전월에 없었던 컬러가 현재 월에 나타난 경우
         changePercent = 100;
       }
@@ -246,16 +244,16 @@ function ColorAnalysis() {
       .sort((a, b) => b.currentPercent - a.currentPercent)
       .slice(0, 10);
 
-    return { rising, stable, falling };
+    return { rising, stable, falling, totalFilteredData: filteredData.length };
   };
 
-  const { rising, stable, falling } = processColorData();
+  const processedData = processColorData();
+  const { rising, stable, falling, totalFilteredData } = processedData;
 
   const formatFollowers = (value) => {
     if (value === 0) return "전체";
     if (value < 1000) return `${value}`;
-    if (value < 1000000) return `${(value / 1000).toFixed(0)}K`;
-    return `${(value / 1000000).toFixed(1)}M`;
+    return `${(value / 1000).toFixed(0)}K`;
   };
   const renderTable = (data, title, type) => (
     <div className="color-table-container">
@@ -376,23 +374,64 @@ function ColorAnalysis() {
         <div className="filter-group slider-group">
           <label className="filter-label">팔로워수</label>
           <div className="slider-container">
-            <input
-              type="range"
-              min="0"
-              max="1000000"
-              step="1000"
-              value={filters.followers}
-              onChange={(e) =>
-                handleFilterChange("followers", parseInt(e.target.value))
-              }
-              className="filter-slider"
-            />
+            <div className="range-slider-wrapper">
+              <div className="range-slider">
+                <input
+                  type="range"
+                  min="1000"
+                  max="20000"
+                  step="1000"
+                  value={filters.followersMin}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (value <= filters.followersMax) {
+                      handleFilterChange("followersMin", value);
+                    }
+                  }}
+                  className="range-input range-input-min"
+                />
+                <input
+                  type="range"
+                  min="1000"
+                  max="20000"
+                  step="1000"
+                  value={filters.followersMax}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (value >= filters.followersMin) {
+                      handleFilterChange("followersMax", value);
+                    }
+                  }}
+                  className="range-input range-input-max"
+                />
+                <div className="range-track">
+                  <div
+                    className="range-progress"
+                    style={{
+                      left: `${
+                        ((filters.followersMin - 1000) / (20000 - 1000)) * 100
+                      }%`,
+                      width: `${
+                        ((filters.followersMax - filters.followersMin) /
+                          (20000 - 1000)) *
+                        100
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
             <div className="slider-labels">
-              <span>0</span>
               <span>1K</span>
+              <span>5K</span>
               <span>10K</span>
-              <span>100K</span>
-              <span>1M</span>
+              <span>15K</span>
+              <span>20K</span>
+            </div>
+            <div className="slider-values">
+              <span>{formatFollowers(filters.followersMin)}</span>
+              <span>~</span>
+              <span>{formatFollowers(filters.followersMax)}</span>
             </div>
           </div>
         </div>
@@ -411,7 +450,8 @@ function ColorAnalysis() {
             {appliedFilters.year && appliedFilters.month
               ? `${appliedFilters.year}년 ${appliedFilters.month}월`
               : "연도/월을 선택해주세요"}{" "}
-            • {formatFollowers(appliedFilters.followers)} 팔로워
+            • {formatFollowers(appliedFilters.followersMin)} ~{" "}
+            {formatFollowers(appliedFilters.followersMax)} 팔로워
             {appliedFilters.mainCategory && (
               <>
                 {" "}
@@ -419,7 +459,8 @@ function ColorAnalysis() {
                 {appliedFilters.subCategory &&
                   ` - ${appliedFilters.subCategory}`}
               </>
-            )}
+            )}{" "}
+            • 총 {totalFilteredData}개 데이터
           </span>
         </div>
       </div>
