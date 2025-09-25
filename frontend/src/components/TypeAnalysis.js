@@ -45,6 +45,12 @@ function TypeAnalysis() {
     coordiItem: "",
   });
 
+  // 정렬 상태 관리
+  const [sortConfig, setSortConfig] = useState({
+    keywords: { key: null, direction: "asc" },
+    itemTypes: { key: null, direction: "asc" },
+  });
+
   // 데이터 로딩
   useEffect(() => {
     fetchTypeData();
@@ -393,6 +399,53 @@ function TypeAnalysis() {
     return "→";
   };
 
+  // 정렬 함수
+  const handleSort = (type, key) => {
+    setSortConfig((prev) => ({
+      ...prev,
+      [type]: {
+        key: key,
+        direction:
+          prev[type].key === key && prev[type].direction === "asc"
+            ? "desc"
+            : "asc",
+      },
+    }));
+  };
+
+  // 정렬된 데이터 반환 함수
+  const getSortedData = (data, type) => {
+    const config = sortConfig[type];
+    if (!config.key) return data;
+
+    return [...data].sort((a, b) => {
+      let aVal, bVal;
+
+      if (config.key === "count") {
+        aVal = a.count;
+        bVal = b.count;
+      } else if (config.key === "change_rate") {
+        aVal = a.change_rate;
+        bVal = b.change_rate;
+      }
+
+      if (aVal < bVal) {
+        return config.direction === "asc" ? -1 : 1;
+      }
+      if (aVal > bVal) {
+        return config.direction === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // 정렬 아이콘 반환 함수
+  const getSortIcon = (type, key) => {
+    const config = sortConfig[type];
+    if (config.key !== key) return "↕";
+    return config.direction === "asc" ? "↑" : "↓";
+  };
+
   if (loading) {
     return (
       <div className="type-analysis">
@@ -563,12 +616,24 @@ function TypeAnalysis() {
                   <tr>
                     <th>번호</th>
                     <th>키워드</th>
-                    <th>빈도</th>
-                    <th>전월대비</th>
+                    <th
+                      className="sortable-header"
+                      onClick={() => handleSort("keywords", "count")}
+                      style={{ cursor: "pointer" }}
+                    >
+                      빈도 {getSortIcon("keywords", "count")}
+                    </th>
+                    <th
+                      className="sortable-header"
+                      onClick={() => handleSort("keywords", "change_rate")}
+                      style={{ cursor: "pointer" }}
+                    >
+                      전월대비 {getSortIcon("keywords", "change_rate")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {keywords.map((keyword, index) => (
+                  {getSortedData(keywords, "keywords").map((keyword, index) => (
                     <tr
                       key={index}
                       className={`keyword-row ${
@@ -609,13 +674,25 @@ function TypeAnalysis() {
                   <tr>
                     <th>번호</th>
                     <th>유형</th>
-                    <th>빈도</th>
-                    <th>전월대비</th>
+                    <th
+                      className="sortable-header"
+                      onClick={() => handleSort("itemTypes", "count")}
+                      style={{ cursor: "pointer" }}
+                    >
+                      빈도 {getSortIcon("itemTypes", "count")}
+                    </th>
+                    <th
+                      className="sortable-header"
+                      onClick={() => handleSort("itemTypes", "change_rate")}
+                      style={{ cursor: "pointer" }}
+                    >
+                      전월대비 {getSortIcon("itemTypes", "change_rate")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {itemTypes.length > 0 ? (
-                    itemTypes.map((item, index) => (
+                    getSortedData(itemTypes, "itemTypes").map((item, index) => (
                       <tr
                         key={index}
                         className={`item-type-row ${

@@ -27,6 +27,13 @@ function ColorAnalysis() {
   const [availableMonths, setAvailableMonths] = useState([]);
   const [filteredMonths, setFilteredMonths] = useState([]);
 
+  // 정렬 상태 관리
+  const [sortConfig, setSortConfig] = useState({
+    rising: { key: null, direction: "asc" },
+    stable: { key: null, direction: "asc" },
+    falling: { key: null, direction: "asc" },
+  });
+
   // 데이터 로딩
   useEffect(() => {
     fetchColorData();
@@ -255,36 +262,100 @@ function ColorAnalysis() {
     if (value < 1000) return `${value}`;
     return `${(value / 1000).toFixed(0)}K`;
   };
-  const renderTable = (data, title, type) => (
-    <div className="color-table-container">
-      <h3 className={`table-title ${type}`}>{title}</h3>
-      <div className="table-wrapper">
-        <table className="color-table">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>키워드</th>
-              <th>비중</th>
-              <th>전월대비</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((item, index) => (
-              <tr key={item.color}>
-                <td className="no-cell">{index + 1}</td>
-                <td className="keyword-cell">{item.color}</td>
-                <td className="weight-cell">{item.currentPercent}%</td>
-                <td className={`change-cell ${type}`}>
-                  {item.changePercent > 0 ? "+" : ""}
-                  {item.changePercent}%
-                </td>
+
+  // 정렬 함수
+  const handleSort = (type, key) => {
+    setSortConfig((prev) => ({
+      ...prev,
+      [type]: {
+        key: key,
+        direction:
+          prev[type].key === key && prev[type].direction === "asc"
+            ? "desc"
+            : "asc",
+      },
+    }));
+  };
+
+  // 정렬된 데이터 반환 함수
+  const getSortedData = (data, type) => {
+    const config = sortConfig[type];
+    if (!config.key) return data;
+
+    return [...data].sort((a, b) => {
+      let aVal = a[config.key];
+      let bVal = b[config.key];
+
+      if (config.key === "currentPercent") {
+        aVal = a.currentPercent;
+        bVal = b.currentPercent;
+      } else if (config.key === "changePercent") {
+        aVal = a.changePercent;
+        bVal = b.changePercent;
+      }
+
+      if (aVal < bVal) {
+        return config.direction === "asc" ? -1 : 1;
+      }
+      if (aVal > bVal) {
+        return config.direction === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // 정렬 아이콘 반환 함수
+  const getSortIcon = (type, key) => {
+    const config = sortConfig[type];
+    if (config.key !== key) return "↕";
+    return config.direction === "asc" ? "↑" : "↓";
+  };
+  const renderTable = (data, title, type) => {
+    const sortedData = getSortedData(data, type);
+
+    return (
+      <div className="color-table-container">
+        <h3 className={`table-title ${type}`}>{title}</h3>
+        <div className="table-wrapper">
+          <table className="color-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>키워드</th>
+                <th
+                  className="sortable-header"
+                  onClick={() => handleSort(type, "currentPercent")}
+                  style={{ cursor: "pointer" }}
+                >
+                  비중 {getSortIcon(type, "currentPercent")}
+                </th>
+                <th
+                  className="sortable-header"
+                  onClick={() => handleSort(type, "changePercent")}
+                  style={{ cursor: "pointer" }}
+                >
+                  전월대비 {getSortIcon(type, "changePercent")}
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sortedData.map((item, index) => (
+                <tr key={item.color}>
+                  <td className="no-cell">{index + 1}</td>
+                  <td className="keyword-cell">{item.color}</td>
+                  <td className="weight-cell">{item.currentPercent}%</td>
+                  <td className={`change-cell ${type}`}>
+                    {item.changePercent > 0 ? "+" : ""}
+                    {item.changePercent}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
