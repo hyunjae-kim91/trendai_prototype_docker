@@ -1,7 +1,7 @@
 .db-test {
   padding: 20px;
   color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -18,31 +18,33 @@
 .test-button {
   background: linear-gradient(
     135deg,
-    rgba(76, 175, 80, 0.8) 0%,
-    rgba(139, 195, 74, 0.8) 100%
+    rgba(59, 130, 246, 0.8) 0%,
+    rgba(37, 99, 235, 0.8) 100%
   );
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  border: 1px solid rgba(59, 130, 246, 0.3);
   color: white;
-  padding: 15px 30px;
+  padding: 12px 24px;
   border-radius: 12px;
-  font-size: 1.1rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   margin-bottom: 30px;
 }
 
 .test-button:hover:not(:disabled) {
   background: linear-gradient(
     135deg,
-    rgba(76, 175, 80, 0.9) 0%,
-    rgba(139, 195, 74, 0.9) 100%
+    rgba(59, 130, 246, 0.9) 0%,
+    rgba(37, 99, 235, 0.9) 100%
   );
-  border-color: rgba(76, 175, 80, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 .test-button:disabled {
@@ -54,13 +56,15 @@
 }
 
 .error-message {
-  background: rgba(244, 67, 54, 0.2);
-  border: 1px solid rgba(244, 67, 54, 0.4);
+  background: rgba(244, 67, 54, 0.15);
+  border: 1px solid rgba(244, 67, 54, 0.3);
   border-radius: 12px;
   padding: 20px;
   margin-top: 20px;
   text-align: center;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .error-message h3 {
@@ -74,14 +78,16 @@
 }
 
 .result-message {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 20px;
+  padding: 24px;
   margin-top: 20px;
   text-align: center;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
   max-width: 600px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .result-message h3 {
