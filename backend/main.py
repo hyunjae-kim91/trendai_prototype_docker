@@ -826,34 +826,119 @@ async def get_coordi_images(
     post_year: int = None,
     post_month: int = None,
     follower_count: int = None,
-    limit: int = 20
+    limit: int = 20,
+    coordi_main_category: str = None,
+    coordi_item_type: str = None
 ):
     """코디 조합 이미지 조회 API"""
     try:
+        
         conn = psycopg2.connect(**DB_CONFIG)
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        # 필터 조건 설정
-        where_conditions = []
-        params = []
+        # 코디 조합 필터링: 선택된 상의 + 클릭한 코디 아이템이 함께 있는 post_id들만 조회
+        if coordi_main_category and coordi_item_type:
+            
+            # 1. 선택된 상의와 클릭한 코디 아이템이 모두 있는 post_id들을 찾기
+            coordi_where_conditions = []
+            coordi_params = []
+            
+            # 상의 조건
+            coordi_where_conditions.append("category_l1 = %s")
+            coordi_params.append(coordi_main_category)
+            coordi_where_conditions.append("item_type = %s")
+            coordi_params.append(coordi_item_type)
+            
+            # 코디 아이템 조건
+            coordi_where_conditions.append("category_l1 = %s")
+            coordi_params.append(main_category)
+            coordi_where_conditions.append("item_type = %s")
+            coordi_params.append(item_type)
+            
+            # 추가 필터 조건
+            if post_year:
+                coordi_where_conditions.append("post_year = %s")
+                coordi_params.append(post_year)
+            
+            if post_month:
+                coordi_where_conditions.append("post_month = %s")
+                coordi_params.append(post_month)
+            
+            if follower_count:
+                coordi_where_conditions.append("follower_count >= %s")
+                coordi_params.append(follower_count)
+            
+            coordi_where_clause = " AND ".join(coordi_where_conditions)
+            
+            # 공통 post_id를 가진 레코드들 찾기 (연도/월 필터 포함)
+            coordi_query = f"""
+                SELECT DISTINCT a.post_id
+                FROM ai_image_dm.instagram_classification_web_date_follow_itemtype a
+                INNER JOIN ai_image_dm.instagram_classification_web_date_follow_itemtype b 
+                ON a.post_id = b.post_id
+                WHERE a.category_l1 = %s AND a.item_type = %s
+                AND b.category_l1 = %s AND b.item_type = %s
+            """
+            
+            coordi_params_simple = [coordi_main_category, coordi_item_type, main_category, item_type]
+            
+            # 연도/월/팔로워 필터 추가
+            if post_year:
+                coordi_query += " AND a.post_year = %s"
+                coordi_params_simple.append(post_year)
+            if post_month:
+                coordi_query += " AND a.post_month = %s"
+                coordi_params_simple.append(post_month)
+            if follower_count:
+                coordi_query += " AND a.follower_count >= %s"
+                coordi_params_simple.append(follower_count)
+            
+            cursor.execute(coordi_query, coordi_params_simple)
+            coordi_result = cursor.fetchall()
+            
+            if not coordi_result:
+                return {
+                    "success": True,
+                    "data": [],
+                    "count": 0,
+                    "message": f"'{coordi_item_type}'와 '{item_type}'이 함께 찍힌 사진이 없습니다."
+                }
+            
+            coordi_post_ids = [row['post_id'] for row in coordi_result]
+            coordi_post_ids_str = ','.join([f"'{pid}'" for pid in coordi_post_ids])
+            
+            # 2. 해당 post_id들 중에서 요청된 코디 아이템의 이미지들만 조회
+            where_conditions = []
+            params = []
+            
+            where_conditions.append(f"post_id IN ({coordi_post_ids_str})")
+            where_conditions.append("item_type = %s")
+            params.append(item_type)
+            where_conditions.append("category_l1 = %s")
+            params.append(main_category)
+            
+        else:
+            # 기존 로직 (코디 조합 필터링이 없는 경우)
+            where_conditions = []
+            params = []
 
-        where_conditions.append("item_type = %s")
-        params.append(item_type)
+            where_conditions.append("item_type = %s")
+            params.append(item_type)
 
-        where_conditions.append("category_l1 = %s")
-        params.append(main_category)
+            where_conditions.append("category_l1 = %s")
+            params.append(main_category)
 
-        if post_year:
-            where_conditions.append("post_year = %s")
-            params.append(post_year)
+            if post_year:
+                where_conditions.append("post_year = %s")
+                params.append(post_year)
 
-        if post_month:
-            where_conditions.append("post_month = %s")
-            params.append(post_month)
+            if post_month:
+                where_conditions.append("post_month = %s")
+                params.append(post_month)
 
-        if follower_count:
-            where_conditions.append("follower_count >= %s")
-            params.append(follower_count)
+            if follower_count:
+                where_conditions.append("follower_count >= %s")
+                params.append(follower_count)
 
         where_clause = " AND ".join(where_conditions)
 

@@ -6,8 +6,8 @@ function PatternAnalysis() {
   const [filters, setFilters] = useState({
     year: "",
     month: "",
-    followersMin: 1000,
-    followersMax: 20000,
+    followersMin: 10000,
+    followersMax: 200000,
     mainCategory: "",
     subCategory: "",
   });
@@ -15,8 +15,8 @@ function PatternAnalysis() {
   const [appliedFilters, setAppliedFilters] = useState({
     year: "",
     month: "",
-    followersMin: 1000,
-    followersMax: 20000,
+    followersMin: 10000,
+    followersMax: 200000,
     mainCategory: "",
     subCategory: "",
   });
@@ -110,8 +110,8 @@ function PatternAnalysis() {
     const resetFilters = {
       year: "",
       month: "",
-      followersMin: 1000,
-      followersMax: 20000,
+      followersMin: 10000,
+      followersMax: 200000,
       mainCategory: "",
       subCategory: "",
     };
@@ -378,8 +378,8 @@ function PatternAnalysis() {
               <div className="range-slider">
                 <input
                   type="range"
-                  min="1000"
-                  max="20000"
+                  min="10000"
+                  max="200000"
                   step="1000"
                   value={filters.followersMin}
                   onChange={(e) => {
@@ -392,8 +392,8 @@ function PatternAnalysis() {
                 />
                 <input
                   type="range"
-                  min="1000"
-                  max="20000"
+                  min="10000"
+                  max="200000"
                   step="1000"
                   value={filters.followersMax}
                   onChange={(e) => {
@@ -409,11 +409,12 @@ function PatternAnalysis() {
                     className="range-progress"
                     style={{
                       left: `${
-                        ((filters.followersMin - 1000) / (20000 - 1000)) * 100
+                        ((filters.followersMin - 10000) / (200000 - 10000)) *
+                        100
                       }%`,
                       width: `${
                         ((filters.followersMax - filters.followersMin) /
-                          (20000 - 1000)) *
+                          (200000 - 10000)) *
                         100
                       }%`,
                     }}
@@ -422,11 +423,11 @@ function PatternAnalysis() {
               </div>
             </div>
             <div className="slider-labels">
-              <span>1K</span>
-              <span>5K</span>
               <span>10K</span>
-              <span>15K</span>
-              <span>20K</span>
+              <span>50K</span>
+              <span>100K</span>
+              <span>150K</span>
+              <span>200K</span>
             </div>
             <div className="slider-values">
               <span>{formatFollowers(filters.followersMin)}</span>

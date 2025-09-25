@@ -5,14 +5,16 @@ function TypeAnalysis() {
   const [filters, setFilters] = useState({
     year: "",
     month: "",
-    followers: 0,
+    followersMin: 10000,
+    followersMax: 200000,
     mainCategory: "",
   });
 
   const [appliedFilters, setAppliedFilters] = useState({
     year: "",
     month: "",
-    followers: 0,
+    followersMin: 10000,
+    followersMax: 200000,
     mainCategory: "",
   });
 
@@ -34,6 +36,14 @@ function TypeAnalysis() {
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // 전체 선택 경로 추적을 위한 상태
+  const [selectedPath, setSelectedPath] = useState({
+    mainCategory: "",
+    keyword: "",
+    itemType: "",
+    coordiItem: "",
+  });
 
   // 데이터 로딩
   useEffect(() => {
@@ -116,6 +126,13 @@ function TypeAnalysis() {
     }
 
     setAppliedFilters({ ...filters });
+    // 선택 경로 초기화
+    setSelectedPath({
+      mainCategory: filters.mainCategory,
+      keyword: "",
+      itemType: "",
+      coordiItem: "",
+    });
     // 현재 filters 값을 직접 사용하여 키워드 조회
     fetchKeywordsWithFilters({ ...filters });
   };
@@ -124,7 +141,8 @@ function TypeAnalysis() {
     const resetFilters = {
       year: "",
       month: "",
-      followers: 0,
+      followersMin: 10000,
+      followersMax: 200000,
       mainCategory: "",
     };
     setFilters(resetFilters);
@@ -138,6 +156,12 @@ function TypeAnalysis() {
     setSelectedCoordiItem("");
     setCoordiImages([]);
     setShowImageGallery(false);
+    setSelectedPath({
+      mainCategory: "",
+      keyword: "",
+      itemType: "",
+      coordiItem: "",
+    });
     setError(""); // Clear error on reset
   };
 
@@ -165,8 +189,8 @@ function TypeAnalysis() {
       if (filterValues.month && filterValues.month !== "") {
         params.append("post_month", filterValues.month);
       }
-      if (filterValues.followers > 0) {
-        params.append("follower_count", filterValues.followers);
+      if (filterValues.followersMin > 0) {
+        params.append("follower_count", filterValues.followersMin);
       }
 
       const response = await fetch(
@@ -207,8 +231,8 @@ function TypeAnalysis() {
       if (appliedFilters.month) {
         params.append("post_month", appliedFilters.month);
       }
-      if (appliedFilters.followers > 0) {
-        params.append("follower_count", appliedFilters.followers);
+      if (appliedFilters.followersMin > 0) {
+        params.append("follower_count", appliedFilters.followersMin);
       }
 
       const response = await fetch(
@@ -233,6 +257,12 @@ function TypeAnalysis() {
     setSelectedItemType("");
     setShowCoordi(false);
     setCoordiData({ left: [], right: [] });
+    setSelectedPath((prev) => ({
+      ...prev,
+      keyword: keyword,
+      itemType: "",
+      coordiItem: "",
+    }));
     fetchItemTypes(keyword);
   };
 
@@ -253,8 +283,8 @@ function TypeAnalysis() {
       if (appliedFilters.month && appliedFilters.month !== "") {
         params.append("post_month", appliedFilters.month);
       }
-      if (appliedFilters.followers > 0) {
-        params.append("follower_count", appliedFilters.followers);
+      if (appliedFilters.followersMin > 0) {
+        params.append("follower_count", appliedFilters.followersMin);
       }
 
       const response = await fetch(
@@ -280,6 +310,11 @@ function TypeAnalysis() {
     setSelectedCoordiItem("");
     setShowImageGallery(false);
     setCoordiImages([]);
+    setSelectedPath((prev) => ({
+      ...prev,
+      itemType: itemType,
+      coordiItem: "",
+    }));
     fetchCoordiCombination(itemType);
   };
 
@@ -294,14 +329,20 @@ function TypeAnalysis() {
         main_category: category,
       });
 
+      // 코디 조합 필터링: 선택된 상의 + 클릭한 코디 아이템
+      if (selectedItemType && appliedFilters.mainCategory) {
+        params.append("coordi_main_category", appliedFilters.mainCategory);
+        params.append("coordi_item_type", selectedItemType);
+      }
+
       if (appliedFilters.year && appliedFilters.year !== "") {
         params.append("post_year", appliedFilters.year);
       }
       if (appliedFilters.month && appliedFilters.month !== "") {
         params.append("post_month", appliedFilters.month);
       }
-      if (appliedFilters.followers > 0) {
-        params.append("follower_count", appliedFilters.followers);
+      if (appliedFilters.followersMin > 0) {
+        params.append("follower_count", appliedFilters.followersMin);
       }
 
       params.append("limit", "20");
@@ -326,6 +367,10 @@ function TypeAnalysis() {
 
   const handleCoordiItemClick = (itemType, category) => {
     setSelectedCoordiItem(itemType);
+    setSelectedPath((prev) => ({
+      ...prev,
+      coordiItem: itemType,
+    }));
     fetchCoordiImages(itemType, category);
   };
 
@@ -418,23 +463,65 @@ function TypeAnalysis() {
         <div className="filter-group slider-group">
           <label className="filter-label">팔로워수</label>
           <div className="slider-container">
-            <input
-              type="range"
-              min="0"
-              max="1000000"
-              step="1000"
-              value={filters.followers}
-              onChange={(e) =>
-                handleFilterChange("followers", parseInt(e.target.value))
-              }
-              className="filter-slider"
-            />
+            <div className="range-slider-wrapper">
+              <div className="range-slider">
+                <input
+                  type="range"
+                  min="10000"
+                  max="200000"
+                  step="1000"
+                  value={filters.followersMin}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (value <= filters.followersMax) {
+                      handleFilterChange("followersMin", value);
+                    }
+                  }}
+                  className="range-input range-input-min"
+                />
+                <input
+                  type="range"
+                  min="10000"
+                  max="200000"
+                  step="1000"
+                  value={filters.followersMax}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (value >= filters.followersMin) {
+                      handleFilterChange("followersMax", value);
+                    }
+                  }}
+                  className="range-input range-input-max"
+                />
+                <div className="range-track">
+                  <div
+                    className="range-progress"
+                    style={{
+                      left: `${
+                        ((filters.followersMin - 10000) / (200000 - 10000)) *
+                        100
+                      }%`,
+                      width: `${
+                        ((filters.followersMax - filters.followersMin) /
+                          (200000 - 10000)) *
+                        100
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
             <div className="slider-labels">
-              <span>0</span>
-              <span>1K</span>
               <span>10K</span>
+              <span>50K</span>
               <span>100K</span>
-              <span>1M</span>
+              <span>150K</span>
+              <span>200K</span>
+            </div>
+            <div className="slider-values">
+              <span>{formatFollowers(filters.followersMin)}</span>
+              <span>~</span>
+              <span>{formatFollowers(filters.followersMax)}</span>
             </div>
           </div>
         </div>
@@ -455,7 +542,8 @@ function TypeAnalysis() {
               : appliedFilters.year
               ? `${appliedFilters.year}년`
               : "전체 기간"}{" "}
-            • {formatFollowers(appliedFilters.followers)} 팔로워
+            • {formatFollowers(appliedFilters.followersMin)} ~{" "}
+            {formatFollowers(appliedFilters.followersMax)} 팔로워
             {appliedFilters.mainCategory && (
               <> • {appliedFilters.mainCategory}</>
             )}
