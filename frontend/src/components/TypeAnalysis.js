@@ -25,6 +25,14 @@ function TypeAnalysis() {
   const [keywords, setKeywords] = useState([]);
   const [selectedKeyword, setSelectedKeyword] = useState("");
   const [itemTypes, setItemTypes] = useState([]);
+  const [selectedItemType, setSelectedItemType] = useState("");
+  const [coordiData, setCoordiData] = useState({ left: [], right: [] });
+  const [showCoordi, setShowCoordi] = useState(false);
+  const [coordiLoading, setCoordiLoading] = useState(false);
+  const [selectedCoordiItem, setSelectedCoordiItem] = useState("");
+  const [coordiImages, setCoordiImages] = useState([]);
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
   const [error, setError] = useState("");
 
   // 데이터 로딩
@@ -124,6 +132,13 @@ function TypeAnalysis() {
     setKeywords([]);
     setSelectedKeyword("");
     setItemTypes([]);
+    setSelectedItemType("");
+    setCoordiData({ left: [], right: [] });
+    setShowCoordi(false);
+    setSelectedCoordiItem("");
+    setCoordiImages([]);
+    setShowImageGallery(false);
+    setError(""); // Clear error on reset
   };
 
   // 아이템 키워드 조회 (현재 appliedFilters 사용)
@@ -215,7 +230,103 @@ function TypeAnalysis() {
 
   const handleKeywordClick = (keyword) => {
     setSelectedKeyword(keyword);
+    setSelectedItemType("");
+    setShowCoordi(false);
+    setCoordiData({ left: [], right: [] });
     fetchItemTypes(keyword);
+  };
+
+  // 코디 조합 조회
+  const fetchCoordiCombination = async (itemType) => {
+    try {
+      setCoordiLoading(true);
+      setError("");
+
+      const params = new URLSearchParams({
+        item_type: itemType,
+        main_category: appliedFilters.mainCategory,
+      });
+
+      if (appliedFilters.year && appliedFilters.year !== "") {
+        params.append("post_year", appliedFilters.year);
+      }
+      if (appliedFilters.month && appliedFilters.month !== "") {
+        params.append("post_month", appliedFilters.month);
+      }
+      if (appliedFilters.followers > 0) {
+        params.append("follower_count", appliedFilters.followers);
+      }
+
+      const response = await fetch(
+        `http://localhost:8001/api/coordi-combination?${params}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setCoordiData(data.data);
+        setShowCoordi(true);
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("코디 조합을 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setCoordiLoading(false);
+    }
+  };
+
+  const handleItemTypeClick = (itemType) => {
+    setSelectedItemType(itemType);
+    setSelectedCoordiItem("");
+    setShowImageGallery(false);
+    setCoordiImages([]);
+    fetchCoordiCombination(itemType);
+  };
+
+  // 이미지 갤러리 조회
+  const fetchCoordiImages = async (itemType, category) => {
+    try {
+      setImageLoading(true);
+      setError("");
+
+      const params = new URLSearchParams({
+        item_type: itemType,
+        main_category: category,
+      });
+
+      if (appliedFilters.year && appliedFilters.year !== "") {
+        params.append("post_year", appliedFilters.year);
+      }
+      if (appliedFilters.month && appliedFilters.month !== "") {
+        params.append("post_month", appliedFilters.month);
+      }
+      if (appliedFilters.followers > 0) {
+        params.append("follower_count", appliedFilters.followers);
+      }
+
+      params.append("limit", "20");
+
+      const response = await fetch(
+        `http://localhost:8001/api/coordi-images?${params}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setCoordiImages(data.data);
+        setShowImageGallery(true);
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("이미지를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  const handleCoordiItemClick = (itemType, category) => {
+    setSelectedCoordiItem(itemType);
+    fetchCoordiImages(itemType, category);
   };
 
   const formatFollowers = (value) => {
@@ -417,7 +528,13 @@ function TypeAnalysis() {
                 <tbody>
                   {itemTypes.length > 0 ? (
                     itemTypes.map((item, index) => (
-                      <tr key={index} className="item-type-row">
+                      <tr
+                        key={index}
+                        className={`item-type-row ${
+                          selectedItemType === item.item_type ? "selected" : ""
+                        }`}
+                        onClick={() => handleItemTypeClick(item.item_type)}
+                      >
                         <td className="rank-cell">{index + 1}</td>
                         <td className="keyword-cell">{item.item_type}</td>
                         <td className="count-cell">{item.count}</td>
@@ -443,6 +560,179 @@ function TypeAnalysis() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 코디 조합 섹션 */}
+      {(coordiLoading || showCoordi) && (
+        <div className={`coordi-container ${showCoordi ? "show" : ""}`}>
+          {coordiLoading ? (
+            <div className="coordi-loading">
+              <div className="loading-spinner"></div>
+              <h3>코디 조합 분석 중...</h3>
+              <p>잠시만 기다려주세요.</p>
+            </div>
+          ) : (
+            <div className="coordi-results">
+              <h3>{selectedItemType && <>{selectedItemType} 코디 조합</>}</h3>
+              <div className="coordi-tables">
+                <div className="coordi-left">
+                  <h4>
+                    {appliedFilters.mainCategory === "상의"
+                      ? "아우터"
+                      : appliedFilters.mainCategory === "아우터"
+                      ? "상의"
+                      : "상의"}
+                  </h4>
+                  <div className="table-wrapper">
+                    <table className="results-table">
+                      <thead>
+                        <tr>
+                          <th>번호</th>
+                          <th>유형</th>
+                          <th>빈도</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {coordiData.left.length > 0 ? (
+                          coordiData.left.map((item, index) => (
+                            <tr
+                              key={index}
+                              className={`coordi-row ${
+                                selectedCoordiItem === item.item_type
+                                  ? "selected"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                handleCoordiItemClick(
+                                  item.item_type,
+                                  appliedFilters.mainCategory === "상의"
+                                    ? "아우터"
+                                    : "상의"
+                                )
+                              }
+                            >
+                              <td className="rank-cell">{index + 1}</td>
+                              <td className="keyword-cell">{item.item_type}</td>
+                              <td className="count-cell">{item.count}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="3" className="empty-cell">
+                              데이터 없음
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="coordi-right">
+                  <h4>
+                    {appliedFilters.mainCategory === "상의"
+                      ? "하의"
+                      : appliedFilters.mainCategory === "아우터"
+                      ? "하의"
+                      : "아우터"}
+                  </h4>
+                  <div className="table-wrapper">
+                    <table className="results-table">
+                      <thead>
+                        <tr>
+                          <th>번호</th>
+                          <th>유형</th>
+                          <th>빈도</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {coordiData.right.length > 0 ? (
+                          coordiData.right.map((item, index) => (
+                            <tr
+                              key={index}
+                              className={`coordi-row ${
+                                selectedCoordiItem === item.item_type
+                                  ? "selected"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                handleCoordiItemClick(
+                                  item.item_type,
+                                  appliedFilters.mainCategory === "상의"
+                                    ? "하의"
+                                    : appliedFilters.mainCategory === "아우터"
+                                    ? "하의"
+                                    : "아우터"
+                                )
+                              }
+                            >
+                              <td className="rank-cell">{index + 1}</td>
+                              <td className="keyword-cell">{item.item_type}</td>
+                              <td className="count-cell">{item.count}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="3" className="empty-cell">
+                              데이터 없음
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 이미지 갤러리 섹션 */}
+      {(imageLoading || showImageGallery) && (
+        <div
+          className={`image-gallery-container ${
+            showImageGallery ? "show" : ""
+          }`}
+        >
+          {imageLoading ? (
+            <div className="image-loading">
+              <div className="loading-spinner"></div>
+              <h3>이미지 로딩 중...</h3>
+              <p>잠시만 기다려주세요.</p>
+            </div>
+          ) : (
+            <div className="image-gallery-results">
+              <h3>
+                {selectedCoordiItem && <>{selectedCoordiItem} 이미지 갤러리</>}
+              </h3>
+              <div className="image-grid">
+                {coordiImages.length > 0 ? (
+                  coordiImages.map((image, index) => (
+                    <div key={index} className="image-item">
+                      <img
+                        src={image.s3_key}
+                        alt={`${image.item_type} 이미지`}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                      <div className="image-info">
+                        <span className="follower-count">
+                          {formatFollowers(image.follower_count)} 팔로워
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-images">
+                    <p>표시할 이미지가 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

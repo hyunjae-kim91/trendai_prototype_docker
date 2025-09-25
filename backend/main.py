@@ -705,6 +705,201 @@ async def get_item_type_items(
             "message": "아이템 유형 조회 중 오류가 발생했습니다."
         }
 
+@app.get("/api/coordi-combination")
+async def get_coordi_combination(
+    item_type: str,
+    main_category: str,
+    post_year: int = None,
+    post_month: int = None,
+    follower_count: int = None
+):
+    """코디 조합 조회 API"""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # 1. 선택된 아이템 유형의 post_id들을 가져옴
+        where_conditions = []
+        params = []
+
+        where_conditions.append("item_type = %s")
+        params.append(item_type)
+
+        where_conditions.append("category_l1 = %s")
+        params.append(main_category)
+
+        if post_year:
+            where_conditions.append("post_year = %s")
+            params.append(post_year)
+
+        if post_month:
+            where_conditions.append("post_month = %s")
+            params.append(post_month)
+
+        if follower_count:
+            where_conditions.append("follower_count >= %s")
+            params.append(follower_count)
+
+        where_clause = " AND ".join(where_conditions)
+
+        # 선택된 아이템의 post_id 조회
+        post_ids_query = f"""
+            SELECT DISTINCT post_id
+            FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+            WHERE {where_clause}
+            AND post_id IS NOT NULL
+        """
+
+        cursor.execute(post_ids_query, params)
+        post_ids_result = cursor.fetchall()
+        
+        if not post_ids_result:
+            return {
+                "success": True,
+                "data": {"left": [], "right": []},
+                "message": "해당 조건에 맞는 데이터가 없습니다."
+            }
+
+        post_ids = [row['post_id'] for row in post_ids_result]
+        post_ids_str = ','.join([f"'{pid}'" for pid in post_ids])
+
+        # 2. 다른 대분류들 정의
+        all_categories = ['상의', '아우터', '하의']
+        other_categories = [cat for cat in all_categories if cat != main_category]
+        
+        if len(other_categories) < 2:
+            return {
+                "success": True,
+                "data": {"left": [], "right": []},
+                "message": "코디 조합을 위한 충분한 대분류가 없습니다."
+            }
+
+        # 3. 각 다른 대분류에서 코디 조합 아이템들 조회
+        result_data = {"left": [], "right": []}
+        
+        for i, category in enumerate(other_categories):
+            coordi_query = f"""
+                SELECT
+                    item_type,
+                    COUNT(*) as count
+                FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+                WHERE post_id IN ({post_ids_str})
+                AND category_l1 = %s
+                AND item_type IS NOT NULL
+                AND item_type != ''
+                GROUP BY item_type
+                ORDER BY count DESC
+                LIMIT 10
+            """
+            
+            cursor.execute(coordi_query, [category])
+            coordi_result = cursor.fetchall()
+            
+            coordi_data = [dict(row) for row in coordi_result]
+            
+            # left 또는 right에 할당
+            if i == 0:
+                result_data["left"] = coordi_data
+            else:
+                result_data["right"] = coordi_data
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "success": True,
+            "data": result_data,
+            "message": f"성공적으로 코디 조합을 조회했습니다. (상위 {len(result_data['left'])} + {len(result_data['right'])}개)"
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "코디 조합 조회 중 오류가 발생했습니다."
+        }
+
+@app.get("/api/coordi-images")
+async def get_coordi_images(
+    item_type: str,
+    main_category: str,
+    post_year: int = None,
+    post_month: int = None,
+    follower_count: int = None,
+    limit: int = 20
+):
+    """코디 조합 이미지 조회 API"""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # 필터 조건 설정
+        where_conditions = []
+        params = []
+
+        where_conditions.append("item_type = %s")
+        params.append(item_type)
+
+        where_conditions.append("category_l1 = %s")
+        params.append(main_category)
+
+        if post_year:
+            where_conditions.append("post_year = %s")
+            params.append(post_year)
+
+        if post_month:
+            where_conditions.append("post_month = %s")
+            params.append(post_month)
+
+        if follower_count:
+            where_conditions.append("follower_count >= %s")
+            params.append(follower_count)
+
+        where_clause = " AND ".join(where_conditions)
+
+        # s3_key가 있는 이미지들 조회
+        images_query = f"""
+            SELECT DISTINCT s3_key, post_id, category_l3, item_type, follower_count
+            FROM ai_image_dm.instagram_classification_web_date_follow_itemtype
+            WHERE {where_clause}
+            AND s3_key IS NOT NULL
+            AND s3_key != ''
+            ORDER BY follower_count DESC
+            LIMIT %s
+        """
+
+        params.append(limit)
+        cursor.execute(images_query, params)
+        result = cursor.fetchall()
+
+        # 결과 데이터 정리
+        image_data = []
+        for row in result:
+            image_data.append({
+                's3_key': row['s3_key'],
+                'post_id': row['post_id'],
+                'category_l3': row['category_l3'],
+                'item_type': row['item_type'],
+                'follower_count': row['follower_count']
+            })
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "success": True,
+            "data": image_data,
+            "count": len(image_data),
+            "message": f"성공적으로 {len(image_data)}개의 이미지를 조회했습니다."
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "이미지 조회 중 오류가 발생했습니다."
+        }
+
 if __name__ == "__main__":
     import uvicorn
     print("🚀 서버 시작 중...")
