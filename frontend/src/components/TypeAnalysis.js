@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { clothingCategories } from "../data/clothingCategories";
 import "./TypeAnalysis.css";
 
 function TypeAnalysis() {
@@ -22,6 +21,7 @@ function TypeAnalysis() {
   const [availableYears, setAvailableYears] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [filteredMonths, setFilteredMonths] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
   const [keywords, setKeywords] = useState([]);
   const [selectedKeyword, setSelectedKeyword] = useState("");
   const [itemTypes, setItemTypes] = useState([]);
@@ -35,25 +35,34 @@ function TypeAnalysis() {
   const fetchTypeData = async () => {
     setLoading(true);
     try {
-      // 연도/월 데이터를 가져오기 위해 메타데이터 API 호출
-      const response = await fetch("http://localhost:8001/api/item-type-meta");
-      const result = await response.json();
+      // 메타데이터와 대분류 목록을 동시에 가져오기
+      const [metaResponse, categoriesResponse] = await Promise.all([
+        fetch("http://localhost:8001/api/item-type-meta"),
+        fetch("http://localhost:8001/api/item-type-categories"),
+      ]);
 
-      if (result.success) {
-        setAvailableYears(result.years);
-        setAvailableMonths(result.months);
-        setFilteredMonths(result.months);
+      const metaResult = await metaResponse.json();
+      const categoriesResult = await categoriesResponse.json();
 
-        // rawData 설정 (연도별 월 필터링을 위해)
-        setRawData(result.data);
-
-        // 기본값을 "전체"로 설정
-        setFilters((prev) => ({
-          ...prev,
-          year: "",
-          month: "",
-        }));
+      if (metaResult.success) {
+        setAvailableYears(metaResult.years);
+        setAvailableMonths(metaResult.months);
+        setFilteredMonths(metaResult.months);
+        setRawData(metaResult.data);
       }
+
+      if (categoriesResult.success) {
+        setAvailableCategories(
+          categoriesResult.data.map((item) => item.category_l1)
+        );
+      }
+
+      // 기본값을 "전체"로 설정
+      setFilters((prev) => ({
+        ...prev,
+        year: "",
+        month: "",
+      }));
     } catch (error) {
       console.error("타입 데이터 로딩 오류:", error);
       setError("데이터를 불러오는 중 오류가 발생했습니다.");
@@ -92,8 +101,15 @@ function TypeAnalysis() {
   };
 
   const handleApplyFilters = () => {
+    // 대분류 체크를 먼저 수행
+    if (!filters.mainCategory || filters.mainCategory === "") {
+      setError("대분류를 선택해주세요.");
+      return;
+    }
+
     setAppliedFilters({ ...filters });
-    fetchKeywords();
+    // 현재 filters 값을 직접 사용하여 키워드 조회
+    fetchKeywordsWithFilters({ ...filters });
   };
 
   const handleResetFilters = () => {
@@ -110,29 +126,32 @@ function TypeAnalysis() {
     setItemTypes([]);
   };
 
-  // 아이템 키워드 조회
+  // 아이템 키워드 조회 (현재 appliedFilters 사용)
   const fetchKeywords = async () => {
-    if (!appliedFilters.mainCategory || appliedFilters.mainCategory === "") {
-      setError("대분류를 선택해주세요.");
-      return;
-    }
+    fetchKeywordsWithFilters(appliedFilters);
+  };
 
+  // 아이템 키워드 조회 (필터 값 직접 전달)
+  const fetchKeywordsWithFilters = async (filterValues) => {
     try {
       setLoading(true);
       setError("");
 
+      console.log("filterValues:", filterValues);
+      console.log("mainCategory:", filterValues.mainCategory);
+
       const params = new URLSearchParams({
-        category_l1: appliedFilters.mainCategory,
+        category_l1: filterValues.mainCategory,
       });
 
-      if (appliedFilters.year && appliedFilters.year !== "") {
-        params.append("post_year", appliedFilters.year);
+      if (filterValues.year && filterValues.year !== "") {
+        params.append("post_year", filterValues.year);
       }
-      if (appliedFilters.month && appliedFilters.month !== "") {
-        params.append("post_month", appliedFilters.month);
+      if (filterValues.month && filterValues.month !== "") {
+        params.append("post_month", filterValues.month);
       }
-      if (appliedFilters.followers > 0) {
-        params.append("follower_count", appliedFilters.followers);
+      if (filterValues.followers > 0) {
+        params.append("follower_count", filterValues.followers);
       }
 
       const response = await fetch(
@@ -245,8 +264,8 @@ function TypeAnalysis() {
             onChange={(e) => handleFilterChange("mainCategory", e.target.value)}
           >
             <option value="">전체</option>
-            {Object.keys(clothingCategories).map((category) => (
-              <option key={category} value={category}>
+            {availableCategories.map((category, index) => (
+              <option key={index} value={category}>
                 {category}
               </option>
             ))}
@@ -336,51 +355,93 @@ function TypeAnalysis() {
       {error && <div className="error-message">{error}</div>}
 
       {keywords.length > 0 && (
-        <div className="keywords-section">
-          <h3>아이템 키워드 상위 10개</h3>
-          <div className="keywords-grid">
-            {keywords.map((keyword, index) => (
-              <div
-                key={index}
-                className={`keyword-card ${
-                  selectedKeyword === keyword.category_l3 ? "selected" : ""
-                }`}
-                onClick={() => handleKeywordClick(keyword.category_l3)}
-              >
-                <div className="keyword-rank">#{index + 1}</div>
-                <div className="keyword-name">{keyword.category_l3}</div>
-                <div className="keyword-count">빈도: {keyword.count}</div>
-                <div
-                  className="keyword-change"
-                  style={{ color: getChangeRateColor(keyword.change_rate) }}
-                >
-                  {getChangeRateIcon(keyword.change_rate)}{" "}
-                  {Math.abs(keyword.change_rate)}%
-                </div>
-              </div>
-            ))}
+        <div className="results-container">
+          <div className="keywords-section">
+            <h3>아이템 키워드 상위 10개</h3>
+            <div className="table-wrapper">
+              <table className="results-table">
+                <thead>
+                  <tr>
+                    <th>번호</th>
+                    <th>키워드</th>
+                    <th>빈도</th>
+                    <th>전월대비</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {keywords.map((keyword, index) => (
+                    <tr
+                      key={index}
+                      className={`keyword-row ${
+                        selectedKeyword === keyword.category_l3
+                          ? "selected"
+                          : ""
+                      }`}
+                      onClick={() => handleKeywordClick(keyword.category_l3)}
+                    >
+                      <td className="rank-cell">{index + 1}</td>
+                      <td className="keyword-cell">{keyword.category_l3}</td>
+                      <td className="count-cell">{keyword.count}</td>
+                      <td
+                        className="change-cell"
+                        style={{
+                          color: getChangeRateColor(keyword.change_rate),
+                        }}
+                      >
+                        {getChangeRateIcon(keyword.change_rate)}{" "}
+                        {Math.abs(keyword.change_rate)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
 
-      {itemTypes.length > 0 && (
-        <div className="item-types-section">
-          <h3>선택된 아이템: {selectedKeyword}</h3>
-          <div className="item-types-grid">
-            {itemTypes.map((item, index) => (
-              <div key={index} className="item-type-card">
-                <div className="item-type-rank">#{index + 1}</div>
-                <div className="item-type-name">{item.item_type}</div>
-                <div className="item-type-count">빈도: {item.count}</div>
-                <div
-                  className="item-type-change"
-                  style={{ color: getChangeRateColor(item.change_rate) }}
-                >
-                  {getChangeRateIcon(item.change_rate)}{" "}
-                  {Math.abs(item.change_rate)}%
-                </div>
-              </div>
-            ))}
+          <div className="item-types-section">
+            <h3>
+              {selectedKeyword
+                ? `선택된 아이템: ${selectedKeyword}`
+                : "아이템 유형 상위 10개"}
+            </h3>
+            <div className="table-wrapper">
+              <table className="results-table">
+                <thead>
+                  <tr>
+                    <th>번호</th>
+                    <th>유형</th>
+                    <th>빈도</th>
+                    <th>전월대비</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {itemTypes.length > 0 ? (
+                    itemTypes.map((item, index) => (
+                      <tr key={index} className="item-type-row">
+                        <td className="rank-cell">{index + 1}</td>
+                        <td className="keyword-cell">{item.item_type}</td>
+                        <td className="count-cell">{item.count}</td>
+                        <td
+                          className="change-cell"
+                          style={{
+                            color: getChangeRateColor(item.change_rate),
+                          }}
+                        >
+                          {getChangeRateIcon(item.change_rate)}{" "}
+                          {Math.abs(item.change_rate)}%
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="empty-cell">
+                        키워드를 선택해주세요
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
