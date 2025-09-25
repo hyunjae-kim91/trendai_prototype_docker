@@ -8,8 +8,8 @@ function MoodSensing() {
   const [activeTab, setActiveTab] = useState("mood1");
 
   const tabs = [
-    { id: "mood1", name: "가칭1" },
-    { id: "mood2", name: "가칭2" },
+    { id: "mood1", name: "무드/룩" },
+    { id: "mood2", name: "TPO" },
   ];
 
   const renderTabContent = () => {
