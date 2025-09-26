@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_ENDPOINTS, apiCall } from "../config/api";
 import "./DBTest.css";
 
 function DBTest() {
@@ -11,9 +12,7 @@ function DBTest() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("http://localhost:8001/api/test-db");
-      const data = await response.json();
-
+      const data = await apiCall(API_ENDPOINTS.DB_TEST);
       setResult(data);
     } catch (err) {
       setError(err.message);

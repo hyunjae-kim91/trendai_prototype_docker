@@ -10,7 +10,7 @@ app = FastAPI(title="TrendAI Prototype API", version="1.0.0")
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001"],  # React 개발 서버
+    allow_origins=["http://localhost", "http://localhost:80", "http://localhost:3001"],  # Nginx 프록시 및 개발 서버
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

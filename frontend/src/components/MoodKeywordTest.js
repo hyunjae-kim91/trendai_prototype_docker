@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_ENDPOINTS, apiCall } from "../config/api";
 import "./MoodKeywordTest.css";
 
 function MoodKeywordTest() {
@@ -14,9 +15,7 @@ function MoodKeywordTest() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("http://localhost:8001/api/mood-keywords");
-      const result = await response.json();
-
+      const result = await apiCall(API_ENDPOINTS.MOOD_KEYWORDS);
       setData(result);
     } catch (err) {
       setError(err.message);
