@@ -56,21 +56,32 @@ check_current_deployment() {
 # 헬스체크
 health_check() {
     local service_name=$1
-    local max_attempts=30
+    local max_attempts=60
     local attempt=1
 
     log_info "${service_name} 헬스체크 시작..."
     while [ $attempt -le $max_attempts ]; do
-        if docker-compose ps | grep -q "${service_name}.*healthy"; then
+        # Docker Compose 상태 확인
+        local status=$(docker-compose ps --format "table {{.Name}}\t{{.Status}}" | grep "${service_name}" | awk '{print $2}')
+        
+        if [[ "$status" == *"healthy"* ]]; then
             log_success "${service_name} 정상 시작됨"
             return 0
+        elif [[ "$status" == *"unhealthy"* ]]; then
+            log_error "${service_name} 헬스체크 실패 (unhealthy)"
+            return 1
+        elif [[ "$status" == *"starting"* ]] || [[ "$status" == *"Up"* ]]; then
+            log_info "헬스체크 시도 ${attempt}/${max_attempts}... (상태: $status)"
+            sleep 5
+            ((attempt++))
+        else
+            log_info "헬스체크 시도 ${attempt}/${max_attempts}... (상태: $status)"
+            sleep 5
+            ((attempt++))
         fi
-        log_info "헬스체크 시도 ${attempt}/${max_attempts}..."
-        sleep 5
-        ((attempt++))
     done
 
-    log_error "${service_name} 헬스체크 실패"
+    log_error "${service_name} 헬스체크 실패 (시간 초과)"
     return 1
 }
 
@@ -117,7 +128,7 @@ build_images() {
         # Nginx 시작 (프론트엔드가 준비된 후)
         log_info "Nginx 시작 중..."
         docker-compose up -d nginx
-        sleep 10  # nginx가 안정적으로 시작될 때까지 대기
+        sleep 5  # nginx가 안정적으로 시작될 때까지 대기
 
         log_success "네트워크 alias 전환 완료 (${active_color} 활성화)"
     }
@@ -162,7 +173,7 @@ deploy() {
         
         # 프론트엔드가 완전히 준비될 때까지 대기
         log_info "프론트엔드 서비스 준비 대기 중..."
-        sleep 15
+        sleep 10
         
         switch_alias green
         log_success "첫 배포 완료! http://localhost 에서 확인하세요."
@@ -174,7 +185,7 @@ deploy() {
             if start_service "frontend-${TARGET_COLOR}"; then
                 # 프론트엔드가 완전히 준비될 때까지 대기
                 log_info "프론트엔드 서비스 준비 대기 중..."
-                sleep 15
+                sleep 10
                 
                 switch_alias ${TARGET_COLOR}
                 sleep 10
