@@ -41,7 +41,9 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - trendai_network
+      trendai_network:
+        aliases:
+          - backend-active   # <-- Green이 활성화일 때 이 alias를 받음
 
   # 백엔드 서비스 (Blue)
   backend-blue:
@@ -67,7 +69,9 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - trendai_network
+      trendai_network:
+        aliases:
+          - backend-active   # <-- Blue가 활성화일 때 이 alias를 받음
 
   # 프론트엔드 서비스 (Green)
   frontend-green:
@@ -82,7 +86,9 @@ services:
       backend-green:
         condition: service_healthy
     networks:
-      - trendai_network
+      trendai_network:
+        aliases:
+          - frontend-active   # <-- Green이 활성화일 때 이 alias를 받음
 
   # 프론트엔드 서비스 (Blue)
   frontend-blue:
@@ -97,7 +103,9 @@ services:
       backend-blue:
         condition: service_healthy
     networks:
-      - trendai_network
+      trendai_network:
+        aliases:
+          - frontend-active   # <-- Blue가 활성화일 때 이 alias를 받음
 
   # Nginx 프록시 서비스
   nginx:
