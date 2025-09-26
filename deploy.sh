@@ -98,27 +98,29 @@ build_images() {
     log_success "이미지 빌드 완료"
 }
 
-# 네트워크 alias 전환
-switch_alias() {
-    local active_color=$1
+    # 네트워크 alias 전환
+    switch_alias() {
+        local active_color=$1
 
-    log_info "네트워크 alias 전환 중... (활성: $active_color)"
+        log_info "네트워크 alias 전환 중... (활성: $active_color)"
 
-    # 프론트엔드
-    docker network disconnect $NETWORK trendai_frontend_blue || true
-    docker network disconnect $NETWORK trendai_frontend_green || true
-    docker network connect --alias frontend-active $NETWORK trendai_frontend_${active_color}
+        # 프론트엔드
+        docker network disconnect $NETWORK trendai_frontend_blue || true
+        docker network disconnect $NETWORK trendai_frontend_green || true
+        docker network connect --alias frontend-active $NETWORK trendai_frontend_${active_color}
 
-    # 백엔드
-    docker network disconnect $NETWORK trendai_backend_blue || true
-    docker network disconnect $NETWORK trendai_backend_green || true
-    docker network connect --alias backend-active $NETWORK trendai_backend_${active_color}
+        # 백엔드
+        docker network disconnect $NETWORK trendai_backend_blue || true
+        docker network disconnect $NETWORK trendai_backend_green || true
+        docker network connect --alias backend-active $NETWORK trendai_backend_${active_color}
 
-    # Nginx 재시작
-    docker-compose restart nginx
+        # Nginx 시작 (프론트엔드가 준비된 후)
+        log_info "Nginx 시작 중..."
+        docker-compose up -d nginx
+        sleep 10  # nginx가 안정적으로 시작될 때까지 대기
 
-    log_success "네트워크 alias 전환 완료 (${active_color} 활성화)"
-}
+        log_success "네트워크 alias 전환 완료 (${active_color} 활성화)"
+    }
 
 # 롤백
 rollback() {
@@ -143,6 +145,7 @@ deploy() {
     log_info "TrendAI Prototype 배포 시작..."
 
     check_dependencies
+    cleanup_containers_and_images
     check_current_deployment
     build_images
 
@@ -156,6 +159,11 @@ deploy() {
         log_info "첫 배포 시작 (Green 환경)"
         start_service "backend-green"
         start_service "frontend-green"
+        
+        # 프론트엔드가 완전히 준비될 때까지 대기
+        log_info "프론트엔드 서비스 준비 대기 중..."
+        sleep 15
+        
         switch_alias green
         log_success "첫 배포 완료! http://localhost 에서 확인하세요."
     else
@@ -164,6 +172,10 @@ deploy() {
 
         if start_service "backend-${TARGET_COLOR}"; then
             if start_service "frontend-${TARGET_COLOR}"; then
+                # 프론트엔드가 완전히 준비될 때까지 대기
+                log_info "프론트엔드 서비스 준비 대기 중..."
+                sleep 15
+                
                 switch_alias ${TARGET_COLOR}
                 sleep 10
                 stop_service "backend-${CURRENT_COLOR}"
@@ -180,9 +192,58 @@ deploy() {
     fi
 }
 
+# 기존 컨테이너와 이미지 정리
+cleanup_containers_and_images() {
+    log_info "기존 컨테이너와 이미지 정리 중..."
+    
+    # 기존 컨테이너 중지 및 삭제
+    log_info "기존 컨테이너 중지 및 삭제..."
+    docker-compose down --remove-orphans 2>/dev/null || true
+    
+    # 프로젝트 관련 컨테이너 강제 삭제
+    docker ps -a --filter "name=trendai_" --format "{{.Names}}" | xargs -r docker rm -f 2>/dev/null || true
+    
+    # 프로젝트 관련 이미지 삭제
+    log_info "프로젝트 관련 이미지 삭제..."
+    docker images --filter "reference=trendai_prototype_docker*" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f 2>/dev/null || true
+    
+    # 사용하지 않는 이미지 삭제
+    log_info "사용하지 않는 이미지 삭제..."
+    docker image prune -f 2>/dev/null || true
+    
+    log_success "컨테이너 및 이미지 정리 완료"
+}
+
+# 강제 정리 (모든 관련 리소스 삭제)
+force_cleanup() {
+    log_warning "강제 정리 시작 (모든 관련 리소스 삭제)..."
+    
+    # 모든 컨테이너 중지 및 삭제
+    log_info "모든 컨테이너 중지 및 삭제..."
+    docker-compose down --remove-orphans --volumes 2>/dev/null || true
+    
+    # 프로젝트 관련 컨테이너 강제 삭제
+    docker ps -a --filter "name=trendai_" --format "{{.Names}}" | xargs -r docker rm -f 2>/dev/null || true
+    
+    # 프로젝트 관련 이미지 강제 삭제
+    log_info "프로젝트 관련 이미지 강제 삭제..."
+    docker images --filter "reference=trendai_prototype_docker*" --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi -f 2>/dev/null || true
+    
+    # 사용하지 않는 모든 리소스 삭제
+    log_info "사용하지 않는 모든 리소스 삭제..."
+    docker system prune -af --volumes 2>/dev/null || true
+    
+    # 네트워크 정리
+    log_info "사용하지 않는 네트워크 정리..."
+    docker network prune -f 2>/dev/null || true
+    
+    log_success "강제 정리 완료"
+}
+
 # 기타 유틸리티
 cleanup() {
     log_info "사용하지 않는 Docker 리소스 정리..."
+    cleanup_containers_and_images
     docker system prune -f
     log_success "정리 완료"
 }
@@ -213,23 +274,25 @@ help() {
     echo "사용법: $0 [명령어]"
     echo ""
     echo "명령어:"
-    echo "  deploy     - 그린/블루 무중단 배포 실행"
-    echo "  status     - 서비스 상태 확인"
-    echo "  logs [svc] - 로그 확인 (서비스명 선택 가능)"
-    echo "  stop       - 모든 서비스 중지"
-    echo "  cleanup    - 사용하지 않는 Docker 리소스 정리"
-    echo "  help       - 도움말 표시"
+    echo "  deploy         - 그린/블루 무중단 배포 실행 (자동 정리 포함)"
+    echo "  status         - 서비스 상태 확인"
+    echo "  logs [svc]     - 로그 확인 (서비스명 선택 가능)"
+    echo "  stop           - 모든 서비스 중지"
+    echo "  cleanup        - 사용하지 않는 Docker 리소스 정리"
+    echo "  force-cleanup  - 모든 관련 리소스 강제 삭제 (컨테이너, 이미지, 볼륨, 네트워크)"
+    echo "  help           - 도움말 표시"
 }
 
 COMMAND=${1:-deploy}
 SERVICE=${2:-}
 
 case "$COMMAND" in
-    deploy)   deploy ;;
-    status)   status ;;
-    logs)     logs $SERVICE ;;
-    stop)     stop ;;
-    cleanup)  cleanup ;;
+    deploy)         deploy ;;
+    status)         status ;;
+    logs)           logs $SERVICE ;;
+    stop)           stop ;;
+    cleanup)        cleanup ;;
+    force-cleanup)  force_cleanup ;;
     help|-h|--help) help ;;
     *) log_error "알 수 없는 명령어: ${COMMAND}"; help; exit 1 ;;
 esac

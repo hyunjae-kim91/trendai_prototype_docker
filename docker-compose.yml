@@ -121,6 +121,13 @@ services:
       - frontend-blue
     networks:
       - trendai_network
+    # nginx가 시작되기 전에 프론트엔드가 완전히 준비될 때까지 대기
+    command: >
+      sh -c "
+        echo 'Waiting for frontend services to be ready...' &&
+        sleep 30 &&
+        nginx -g 'daemon off;'
+      "
 
 volumes:
   redis_data:
