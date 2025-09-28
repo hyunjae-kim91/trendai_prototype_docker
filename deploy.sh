@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # TrendAI Prototype Docker 배포 스크립트
-# Green/Blue 무중단 배포 (네트워크 alias 방식)
 
 set -e
 
@@ -18,9 +17,6 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# 네트워크 이름 (docker-compose project명에 따라 달라질 수 있음)
-NETWORK="trendai_prototype_docker_trendai_network"
-
 # 환경 변수 파일 확인
 if [ ! -f .env ]; then
     log_error ".env 파일이 없습니다. env.example을 참고하여 .env 파일을 생성해주세요."
@@ -35,24 +31,6 @@ check_dependencies() {
     log_success "의존성 확인 완료"
 }
 
-# 현재 배포 상태 확인
-check_current_deployment() {
-    log_info "현재 배포 상태 확인 중..."
-
-    if docker-compose ps | grep -q "trendai_backend_green.*Up"; then
-        CURRENT_COLOR="green"
-        TARGET_COLOR="blue"
-    elif docker-compose ps | grep -q "trendai_backend_blue.*Up"; then
-        CURRENT_COLOR="blue"
-        TARGET_COLOR="green"
-    else
-        CURRENT_COLOR="none"
-        TARGET_COLOR="green"
-    fi
-
-    log_info "현재 배포: ${CURRENT_COLOR}, 대상 배포: ${TARGET_COLOR}"
-}
-
 # 헬스체크
 health_check() {
     local service_name=$1
@@ -60,8 +38,24 @@ health_check() {
     local attempt=1
 
     log_info "${service_name} 헬스체크 시작..."
+
+    # Redis는 별도 체크 (redis-cli ping → PONG)
+    if [ "$service_name" = "trendai_redis" ]; then
+        while [ $attempt -le $max_attempts ]; do
+            if docker exec $service_name redis-cli ping 2>/dev/null | grep -q PONG; then
+                log_success "Redis 정상 시작됨"
+                return 0
+            fi
+            log_info "Redis 헬스체크 시도 ${attempt}/${max_attempts}..."
+            sleep 5
+            ((attempt++))
+        done
+        log_error "Redis 헬스체크 실패"
+        return 1
+    fi
+
+    # 일반 서비스 체크
     while [ $attempt -le $max_attempts ]; do
-        # Docker Compose 상태 확인
         local status=$(docker-compose ps --format "table {{.Name}}\t{{.Status}}" | grep "${service_name}" | awk '{print $2}')
         
         if [[ "$status" == *"healthy"* ]]; then
@@ -70,10 +64,6 @@ health_check() {
         elif [[ "$status" == *"unhealthy"* ]]; then
             log_error "${service_name} 헬스체크 실패 (unhealthy)"
             return 1
-        elif [[ "$status" == *"starting"* ]] || [[ "$status" == *"Up"* ]]; then
-            log_info "헬스체크 시도 ${attempt}/${max_attempts}... (상태: $status)"
-            sleep 5
-            ((attempt++))
         else
             log_info "헬스체크 시도 ${attempt}/${max_attempts}... (상태: $status)"
             sleep 5
@@ -85,70 +75,11 @@ health_check() {
     return 1
 }
 
-# 서비스 중지
-stop_service() {
-    local service_name=$1
-    log_info "${service_name} 중지 중..."
-    docker-compose stop ${service_name} || true
-    docker-compose rm -f ${service_name} || true
-    log_success "${service_name} 중지 완료"
-}
-
-# 서비스 시작
-start_service() {
-    local service_name=$1
-    log_info "${service_name} 시작 중..."
-    docker-compose up -d ${service_name}
-    health_check ${service_name}
-}
-
 # 이미지 빌드
 build_images() {
     log_info "Docker 이미지 빌드 중..."
     docker-compose build --no-cache
     log_success "이미지 빌드 완료"
-}
-
-    # 네트워크 alias 전환
-    switch_alias() {
-        local active_color=$1
-
-        log_info "네트워크 alias 전환 중... (활성: $active_color)"
-
-        # 프론트엔드
-        docker network disconnect $NETWORK trendai_frontend_blue || true
-        docker network disconnect $NETWORK trendai_frontend_green || true
-        docker network connect --alias frontend-active $NETWORK trendai_frontend_${active_color}
-
-        # 백엔드
-        docker network disconnect $NETWORK trendai_backend_blue || true
-        docker network disconnect $NETWORK trendai_backend_green || true
-        docker network connect --alias backend-active $NETWORK trendai_backend_${active_color}
-
-        # Nginx 시작 (프론트엔드가 준비된 후)
-        log_info "Nginx 시작 중..."
-        docker-compose up -d nginx
-        sleep 5  # nginx가 안정적으로 시작될 때까지 대기
-
-        log_success "네트워크 alias 전환 완료 (${active_color} 활성화)"
-    }
-
-# 롤백
-rollback() {
-    local failed_color=$1
-    local rollback_color=$2
-
-    log_warning "롤백 시작... (실패: ${failed_color} -> 복구: ${rollback_color})"
-
-    stop_service "backend-${failed_color}"
-    stop_service "frontend-${failed_color}"
-
-    start_service "backend-${rollback_color}"
-    start_service "frontend-${rollback_color}"
-
-    switch_alias ${rollback_color}
-
-    log_success "롤백 완료"
 }
 
 # 메인 배포
@@ -157,50 +88,19 @@ deploy() {
 
     check_dependencies
     cleanup_containers_and_images
-    check_current_deployment
     build_images
 
-    # Redis 시작
-    log_info "Redis 시작..."
-    docker-compose up -d redis
+    # 모든 서비스 시작
+    log_info "모든 서비스 시작 중..."
+    docker-compose up -d
+
+    # 서비스별 헬스체크
     health_check "trendai_redis"
+    health_check "trendai_backend"
+    health_check "trendai_frontend"
+    health_check "trendai_nginx"
 
-    if [ "$CURRENT_COLOR" = "none" ]; then
-        # 첫 배포
-        log_info "첫 배포 시작 (Green 환경)"
-        start_service "backend-green"
-        start_service "frontend-green"
-        
-        # 프론트엔드가 완전히 준비될 때까지 대기
-        log_info "프론트엔드 서비스 준비 대기 중..."
-        sleep 10
-        
-        switch_alias green
-        log_success "첫 배포 완료! http://localhost 에서 확인하세요."
-    else
-        # 무중단 배포
-        log_info "무중단 배포 시작 (${CURRENT_COLOR} -> ${TARGET_COLOR})"
-
-        if start_service "backend-${TARGET_COLOR}"; then
-            if start_service "frontend-${TARGET_COLOR}"; then
-                # 프론트엔드가 완전히 준비될 때까지 대기
-                log_info "프론트엔드 서비스 준비 대기 중..."
-                sleep 10
-                
-                switch_alias ${TARGET_COLOR}
-                sleep 10
-                stop_service "backend-${CURRENT_COLOR}"
-                stop_service "frontend-${CURRENT_COLOR}"
-                log_success "무중단 배포 완료! (${TARGET_COLOR} 환경 활성화)"
-            else
-                log_error "프론트엔드 시작 실패, 롤백 중..."
-                rollback ${TARGET_COLOR} ${CURRENT_COLOR}
-            fi
-        else
-            log_error "백엔드 시작 실패, 롤백 중..."
-            rollback ${TARGET_COLOR} ${CURRENT_COLOR}
-        fi
-    fi
+    log_success "배포 완료! http://localhost 에서 확인하세요."
 }
 
 # 기존 컨테이너와 이미지 정리
@@ -285,7 +185,7 @@ help() {
     echo "사용법: $0 [명령어]"
     echo ""
     echo "명령어:"
-    echo "  deploy         - 그린/블루 무중단 배포 실행 (자동 정리 포함)"
+    echo "  deploy         - 서비스 배포 실행 (자동 정리 포함)"
     echo "  status         - 서비스 상태 확인"
     echo "  logs [svc]     - 로그 확인 (서비스명 선택 가능)"
     echo "  stop           - 모든 서비스 중지"

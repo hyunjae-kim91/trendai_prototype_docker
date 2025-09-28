@@ -52,9 +52,27 @@ check_service() {
     return 1
 }
 
+# Redis 헬스체크
+check_redis() {
+    log_info "Redis 헬스체크 시작..."
+    
+    if docker exec trendai_redis redis-cli ping 2>/dev/null | grep -q PONG; then
+        log_success "Redis 정상 동작"
+        return 0
+    else
+        log_error "Redis 헬스체크 실패"
+        return 1
+    fi
+}
+
 # 메인 헬스체크
 main() {
     log_info "TrendAI Prototype 헬스체크 시작..."
+    
+    # Redis 헬스체크
+    if ! check_redis; then
+        exit 1
+    fi
     
     # Nginx 헬스체크
     if ! check_service "Nginx" "http://localhost/health"; then

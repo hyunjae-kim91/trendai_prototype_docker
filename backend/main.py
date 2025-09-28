@@ -3,9 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import redis
+import os
 from config import DB_CONFIG, get_db_url
 
 app = FastAPI(title="TrendAI Prototype API", version="1.0.0")
+
+# Redis 연결 설정
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # CORS 설정
 app.add_middleware(
@@ -75,7 +81,12 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    try:
+        # Redis 연결 테스트
+        redis_client.ping()
+        return {"status": "healthy", "redis": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "redis": "disconnected", "error": str(e)}
 
 @app.get("/api/test-db")
 async def test_db():

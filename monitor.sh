@@ -89,6 +89,13 @@ check_services() {
     echo ""
     log_info "서비스 헬스체크:"
     
+    # Redis 헬스체크
+    if docker exec trendai_redis redis-cli ping > /dev/null 2>&1; then
+        log_success "Redis: 정상"
+    else
+        log_error "Redis: 오류"
+    fi
+    
     # Nginx 헬스체크
     if curl -f -s "http://localhost/health" > /dev/null 2>&1; then
         log_success "Nginx: 정상"
@@ -101,13 +108,6 @@ check_services() {
         log_success "API: 정상"
     else
         log_error "API: 오류"
-    fi
-    
-    # Redis 헬스체크
-    if docker exec trendai_redis redis-cli ping > /dev/null 2>&1; then
-        log_success "Redis: 정상"
-    else
-        log_error "Redis: 오류"
     fi
 }
 
