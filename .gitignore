@@ -49,3 +49,12 @@ Thumbs.db
 # Logs
 logs
 *.log
+
+# venv
+.venv/
+
+# test
+test_*
+
+# Agent md
+AGENTS.md

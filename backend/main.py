@@ -1,17 +1,36 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import redis
 import os
-from config import DB_CONFIG, get_db_url
+from config import DB_CONFIG, DB_CONNECT_TIMEOUT, PUBLIC_DB_CONFIG
 
 app = FastAPI(title="TrendAI Prototype API", version="1.0.0")
 
 # Redis 연결 설정
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+# 데이터베이스 연결 헬퍼
+def get_db_connection():
+    return psycopg2.connect(connect_timeout=DB_CONNECT_TIMEOUT, **DB_CONFIG)
+
+
+def check_db_health():
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        return True, None
+    except Exception as exc:
+        return False, str(exc)
+    finally:
+        if conn is not None:
+            conn.close()
 
 # CORS 설정
 app.add_middleware(
@@ -26,7 +45,7 @@ app.add_middleware(
 def test_db_connection():
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 테스트 테이블 생성
@@ -69,9 +88,9 @@ def test_db_connection():
         }
     except Exception as e:
         return {
-            "success": False, 
-            "error": str(e), 
-            "config": DB_CONFIG,
+            "success": False,
+            "error": str(e),
+            "database": PUBLIC_DB_CONFIG,
             "message": "데이터베이스 연결 또는 쿼리 실행 중 오류가 발생했습니다."
         }
 
@@ -80,13 +99,34 @@ async def root():
     return {"message": "TrendAI Prototype API is running"}
 
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
+    redis_status = {"status": "connected"}
     try:
-        # Redis 연결 테스트
         redis_client.ping()
-        return {"status": "healthy", "redis": "connected"}
-    except Exception as e:
-        return {"status": "unhealthy", "redis": "disconnected", "error": str(e)}
+    except Exception as exc:
+        redis_status = {
+            "status": "disconnected",
+            "error": str(exc)
+        }
+
+    db_ok, db_error = check_db_health()
+    db_status = {
+        "status": "connected" if db_ok else "disconnected",
+        "config": PUBLIC_DB_CONFIG,
+    }
+    if db_error:
+        db_status["error"] = db_error
+
+    is_healthy = redis_status.get("status") == "connected" and db_status["status"] == "connected"
+    payload = {
+        "status": "healthy" if is_healthy else "unhealthy",
+        "redis": redis_status,
+        "database": db_status,
+    }
+
+    status_code = status.HTTP_200_OK if is_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+    return JSONResponse(status_code=status_code, content=payload)
 
 @app.get("/api/test-db")
 async def test_db():
@@ -99,7 +139,7 @@ async def get_mood_keywords():
     """무드 센싱 키워드 데이터 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 무드 키워드 데이터 조회
@@ -150,7 +190,7 @@ async def get_mood_rate():
     """무드 센싱 가칭1 데이터 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 무드 레이트 데이터 조회
@@ -213,7 +253,7 @@ async def get_mood_style():
     """무드 센싱 가칭2 데이터 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 무드 스타일 데이터 조회 (필수 컬럼만)
@@ -252,7 +292,7 @@ async def get_item_color():
     """아이템 센싱 컬러 데이터 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 아이템 컬러 데이터 조회
@@ -296,7 +336,7 @@ async def get_item_pattern():
     """아이템 센싱 패턴 데이터 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 아이템 패턴 데이터 조회
@@ -340,7 +380,7 @@ async def get_item_detail():
     """아이템 센싱 디테일 데이터 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 아이템 디테일 데이터 조회
@@ -384,7 +424,7 @@ async def get_item_type_categories():
     """아이템 타입 대분류 목록 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 대분류 목록 조회
@@ -420,7 +460,7 @@ async def get_item_type_meta():
     """아이템 타입 메타데이터 조회 API (연도/월 정보)"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # 연도/월 데이터 조회
@@ -467,7 +507,7 @@ async def get_item_type_keywords(
     """아이템 타입 키워드 상위 10개 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # WHERE 조건 구성
@@ -597,7 +637,7 @@ async def get_item_type_items(
     """선택된 아이템의 유형 상위 10개 조회 API"""
     try:
         # PostgreSQL 연결
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # WHERE 조건 구성
@@ -726,7 +766,7 @@ async def get_coordi_combination(
 ):
     """코디 조합 조회 API"""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # 1. 선택된 아이템 유형의 post_id들을 가져옴
@@ -842,7 +882,7 @@ async def get_color_images(
 ):
     """컬러별 이미지 조회 API"""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # WHERE 조건 구성
@@ -930,7 +970,7 @@ async def get_pattern_images(
 ):
     """패턴별 이미지 조회 API"""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # WHERE 조건 구성
@@ -1018,7 +1058,7 @@ async def get_detail_images(
 ):
     """디테일별 이미지 조회 API"""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # WHERE 조건 구성
@@ -1108,7 +1148,7 @@ async def get_coordi_images(
     """코디 조합 이미지 조회 API"""
     try:
         
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # 코디 조합 필터링: 선택된 상의 + 클릭한 코디 아이템이 함께 있는 post_id들만 조회
