@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import API_ENDPOINTS, { apiCall } from "../config/api";
 import { clothingCategories } from "../data/clothingCategories";
 import ImageModal from "./ImageModal";
 import "./ColorAnalysis.css";
@@ -54,8 +55,7 @@ function ColorAnalysis() {
   const fetchColorData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8001/api/item-color");
-      const result = await response.json();
+      const result = await apiCall(API_ENDPOINTS.ITEM_COLOR);
 
       if (result.success) {
         setRawData(result.data);
@@ -175,10 +175,7 @@ function ColorAnalysis() {
       );
       params.append("limit", imageLimit.toString());
 
-      const response = await fetch(
-        `http://localhost:8001/api/color-images?${params}`
-      );
-      const data = await response.json();
+      const data = await apiCall(`${API_ENDPOINTS.COLOR_IMAGES}?${params}`);
 
       if (data.success) {
         setColorImages(data.data);

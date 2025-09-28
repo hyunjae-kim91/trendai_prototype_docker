@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import API_ENDPOINTS, { apiCall } from "../config/api";
 import { clothingCategories } from "../data/clothingCategories";
 import ImageModal from "./ImageModal";
 import "./DetailAnalysis.css";
@@ -47,8 +48,7 @@ function DetailAnalysis() {
   const fetchDetailData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8001/api/item-detail");
-      const result = await response.json();
+      const result = await apiCall(API_ENDPOINTS.ITEM_DETAIL);
 
       if (result.success) {
         setRawData(result.data);
@@ -168,10 +168,7 @@ function DetailAnalysis() {
       );
       params.append("limit", imageLimit.toString());
 
-      const response = await fetch(
-        `http://localhost:8001/api/detail-images?${params}`
-      );
-      const data = await response.json();
+      const data = await apiCall(`${API_ENDPOINTS.DETAIL_IMAGES}?${params}`);
 
       if (data.success) {
         setDetailImages(data.data);

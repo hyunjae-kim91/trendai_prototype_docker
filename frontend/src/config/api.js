@@ -1,5 +1,39 @@
 // API 설정
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const RAW_API_BASE_URL = process.env.REACT_APP_API_URL;
+const DEFAULT_API_BASE = '/api';
+
+const isBrowser = typeof window !== 'undefined' && typeof window.location !== 'undefined';
+
+const normalizeBaseUrl = (baseUrl) => {
+  if (!baseUrl) {
+    return DEFAULT_API_BASE;
+  }
+
+  if (baseUrl.startsWith('/')) {
+    return baseUrl.replace(/\/$/, '');
+  }
+
+  try {
+    const parsed = new URL(baseUrl);
+
+    if (
+      isBrowser &&
+      ['localhost', '127.0.0.1'].includes(parsed.hostname) &&
+      !['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ) {
+      console.warn('Detected remote client with localhost API base. Falling back to relative /api');
+      return DEFAULT_API_BASE;
+    }
+
+    const pathname = parsed.pathname.replace(/\/$/, '');
+    return `${parsed.origin}${pathname}`;
+  } catch (error) {
+    console.warn('Invalid REACT_APP_API_URL value. Falling back to relative /api', error);
+    return DEFAULT_API_BASE;
+  }
+};
+
+const API_BASE_URL = normalizeBaseUrl(RAW_API_BASE_URL);
 
 export const API_ENDPOINTS = {
   // 헬스체크

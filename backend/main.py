@@ -68,9 +68,10 @@ def test_db_connection():
         
         # 실제 데이터 조회
         cursor.execute("""
-            SELECT hashtags_str 
-            FROM llm_poc.temp_style 
-            WHERE desc_style != '[]'::jsonb 
+            SELECT hashtags_str
+            FROM ai_image_dm.instagram_web_mood_hashtags
+            WHERE desc_style IS NOT NULL
+            AND desc_style != '[]'::jsonb
             LIMIT 10
         """)
         result = cursor.fetchall()

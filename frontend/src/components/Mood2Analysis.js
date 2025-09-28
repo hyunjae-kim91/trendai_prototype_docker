@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import API_ENDPOINTS, { apiCall } from "../config/api";
 import ImageModal from "./ImageModal";
 import "./Mood2Analysis.css";
 
@@ -35,14 +36,7 @@ function Mood2Analysis() {
   const fetchMoodCategories = async () => {
     try {
       console.log("무드 카테고리 API 호출 시작...");
-      const response = await fetch("http://localhost:8001/api/mood-keywords");
-      console.log("API 응답 상태:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      const result = await apiCall(API_ENDPOINTS.MOOD_KEYWORDS);
       console.log("API 응답 데이터:", result);
 
       if (result.success) {
@@ -60,14 +54,7 @@ function Mood2Analysis() {
   const fetchStyleData = async () => {
     try {
       console.log("무드 스타일 API 호출 시작...");
-      const response = await fetch("http://localhost:8001/api/mood-style");
-      console.log("API 응답 상태:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      const result = await apiCall(API_ENDPOINTS.MOOD_STYLE);
       console.log("API 응답 데이터:", result);
 
       if (result.success) {

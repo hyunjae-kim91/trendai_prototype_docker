@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import API_ENDPOINTS, { apiCall } from "../config/api";
 import ImageModal from "./ImageModal";
 import "./Mood1Analysis.css";
 
@@ -72,8 +73,7 @@ function Mood1Analysis() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8001/api/mood-rate");
-      const result = await response.json();
+      const result = await apiCall(API_ENDPOINTS.MOOD_RATE);
 
       if (result.success) {
         // 컬럼명 매핑

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import API_ENDPOINTS, { apiCall } from "../config/api";
 import ImageModal from "./ImageModal";
 import "./TypeAnalysis.css";
 
@@ -61,13 +62,10 @@ function TypeAnalysis() {
     setLoading(true);
     try {
       // 메타데이터와 대분류 목록을 동시에 가져오기
-      const [metaResponse, categoriesResponse] = await Promise.all([
-        fetch("http://localhost:8001/api/item-type-meta"),
-        fetch("http://localhost:8001/api/item-type-categories"),
+      const [metaResult, categoriesResult] = await Promise.all([
+        apiCall(API_ENDPOINTS.ITEM_TYPE_META),
+        apiCall(API_ENDPOINTS.ITEM_TYPE_CATEGORIES),
       ]);
-
-      const metaResult = await metaResponse.json();
-      const categoriesResult = await categoriesResponse.json();
 
       if (metaResult.success) {
         setAvailableYears(metaResult.years);
@@ -200,10 +198,7 @@ function TypeAnalysis() {
         params.append("follower_count", filterValues.followersMin);
       }
 
-      const response = await fetch(
-        `http://localhost:8001/api/item-type-keywords?${params}`
-      );
-      const data = await response.json();
+      const data = await apiCall(`${API_ENDPOINTS.ITEM_TYPE_KEYWORDS}?${params}`);
 
       if (data.success) {
         setKeywords(data.data);
@@ -242,10 +237,7 @@ function TypeAnalysis() {
         params.append("follower_count", appliedFilters.followersMin);
       }
 
-      const response = await fetch(
-        `http://localhost:8001/api/item-type-items?${params}`
-      );
-      const data = await response.json();
+      const data = await apiCall(`${API_ENDPOINTS.ITEM_TYPE_ITEMS}?${params}`);
 
       if (data.success) {
         setItemTypes(data.data);
@@ -294,10 +286,7 @@ function TypeAnalysis() {
         params.append("follower_count", appliedFilters.followersMin);
       }
 
-      const response = await fetch(
-        `http://localhost:8001/api/coordi-combination?${params}`
-      );
-      const data = await response.json();
+      const data = await apiCall(`${API_ENDPOINTS.COORDI_COMBINATION}?${params}`);
 
       if (data.success) {
         setCoordiData(data.data);
@@ -354,10 +343,7 @@ function TypeAnalysis() {
 
       params.append("limit", "20");
 
-      const response = await fetch(
-        `http://localhost:8001/api/coordi-images?${params}`
-      );
-      const data = await response.json();
+      const data = await apiCall(`${API_ENDPOINTS.COORDI_IMAGES}?${params}`);
 
       if (data.success) {
         setCoordiImages(data.data);
